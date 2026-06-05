@@ -37,6 +37,7 @@ source ~/racecar/install/setup.bash
 | 14-航点录制与CSV | get.py + go.py 录制/回放 |
 | 15-导航调参指南 | 晃动/撞墙/犹豫调参 |
 | 16-CSV自动停止功能 | go.py 中 stop_time 停等 |
+| 20-src目录调研 | src 目录源码反向调研（死代码分析、编译方法）|
 
 ## 硬件平台
 
