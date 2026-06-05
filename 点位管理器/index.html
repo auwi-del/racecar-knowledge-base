@@ -70,6 +70,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .point-list::-webkit-scrollbar-track { background: transparent; }
 .point-list::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
+/* ---- Settings panel ---- */
+.settings-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #16213e; border: 1px solid #0f3460; border-radius: 8px; padding: 20px 24px; z-index: 200; min-width: 260px; box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+.settings-panel.show { display: block; }
+.settings-panel h3 { font-size: 15px; color: #e94560; margin-bottom: 16px; }
+.settings-panel .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; font-size: 13px; }
+.settings-panel .setting-row + .setting-row { border-top: 1px solid #0f3460; }
+.settings-panel label { color: #ddd; cursor: pointer; user-select: none; }
+.toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.toggle input { display: none; }
+.toggle .slider { position: absolute; inset: 0; background: #333; border-radius: 11px; cursor: pointer; transition: .2s; }
+.toggle .slider::before { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; background: #888; border-radius: 50%; transition: .2s; }
+.toggle input:checked + .slider { background: #e94560; }
+.toggle input:checked + .slider::before { background: #fff; transform: translateX(18px); }
+.settings-close { margin-top: 16px; width: 100%; padding: 6px; border: 1px solid #0f3460; border-radius: 4px; background: #1a1a40; color: #ccc; cursor: pointer; font-size: 12px; }
+.settings-close:hover { background: #e94560; color: #fff; border-color: #e94560; }
+.settings-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 199; }
+.settings-overlay.show { display: block; }
+
 /* ---- Toast ---- */
 .toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 8px 20px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 100; }
 .toast.show { opacity: 1; }
@@ -87,11 +105,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 <div class="toolbar">
   <div class="title">🗺 点位编辑 <small>Waypoint Editor</small></div>
   <button onclick="loadCSV()">📂 导入</button>
+  <button onclick="openLastSession()">↻ 上次文件</button>
   <button onclick="undo()">↩ 撤销</button>
   <button onclick="exportCSV()">💾 保存</button>
   <button onclick="addPoint()">＋ 新增</button>
-  <button onclick="loadMap()">🗺 地图</button>
-  <button onclick="clearMap()" id="clearMapBtn" style="display:none">✕ 移除地图</button>
+  <button type="button" onclick="toggleSettings()">⚙ 设置</button>
   <div class="spacer"></div>
   <span class="info" id="mapInfo" style="display:none"></span>
   <span class="info" id="pointCount">0 个点</span>
@@ -132,6 +150,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 
 <div class="toast" id="toast"></div>
 
+<!-- Settings -->
+<div class="settings-overlay" id="settingsOverlay" onclick="toggleSettings()"></div>
+<div class="settings-panel" id="settingsPanel">
+  <h3>⚙ 设置</h3>
+  <div class="setting-row">
+    <label for="showGridToggle">显示网格</label>
+    <label class="toggle" for="showGridToggle">
+      <input type="checkbox" id="showGridToggle" onchange="applySetting('showGrid', this.checked)">
+      <div class="slider"></div>
+    </label>
+  </div>
+  <button class="settings-close" onclick="toggleSettings()">关闭</button>
+</div>
+
 <!-- Hidden file input -->
 <input type="file" id="fileInput" accept=".csv,.pgm,.png,.yaml,.yml" multiple style="display:none">
 <input type="file" id="pgmInput" accept=".pgm,.png,.jpg,.jpeg,.bmp" style="display:none">
@@ -159,6 +191,9 @@ let drag = { active: false, mode: null, startX: 0, startY: 0,
 // undo history
 const MAX_UNDO = 100;
 let undoStack = [];
+
+// whether source CSV had stop_time column (preserve format on export)
+let sourceHasStopTime = false;
 
 // map state
 let mapImage = null;        // offscreen canvas from parsed PGM
@@ -342,6 +377,7 @@ function render() {
 }
 
 function drawGrid() {
+  if (!settings.showGrid) return;
   const W = canvas.width, H = canvas.height;
   const scale = view.scale;
 
@@ -624,7 +660,7 @@ function addPoint() {
   const offset = points.length > 0
     ? { x: points[points.length-1].x + 1, y: points[points.length-1].y }
     : { x: 0, y: 0 };
-  points.push({ x: offset.x, y: offset.y, z: 0, w: 1 });
+  points.push({ x: offset.x, y: offset.y, z: 0, w: 1, stopTime: 0 });
   selectedIdx = newIdx;
   updatePropPanel();
   updatePointList();
@@ -659,6 +695,7 @@ function updatePropPanel() {
       <label>y</label> <input id="pf_y" type="number" step="any" value="${p.y.toFixed(6)}">
       <label>z</label> <input id="pf_z" type="number" step="any" value="${p.z.toFixed(6)}">
       <label>w</label> <input id="pf_w" type="number" step="any" value="${p.w.toFixed(6)}">
+      <label>⏱</label> <input id="pf_st" type="number" step="any" min="0" value="${(p.stopTime || 0).toFixed(1)}">
       <div class="angle-row">
         <label>朝向</label>
         <span>${yawDeg}°</span>
@@ -676,11 +713,13 @@ function applyProps() {
   const y = parseFloat(document.getElementById('pf_y').value);
   const z = parseFloat(document.getElementById('pf_z').value);
   const w = parseFloat(document.getElementById('pf_w').value);
+  const st = parseFloat(document.getElementById('pf_st').value);
   if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(w)) {
     p.x = x; p.y = y; p.z = z; p.w = w;
     // normalize quaternion
     const len = Math.hypot(p.z, p.w);
     if (len > 0) { p.z /= len; p.w /= len; }
+    if (!isNaN(st) && st >= 0) p.stopTime = st;
     updatePropPanel();
     updatePointList();
     render();
@@ -695,7 +734,7 @@ function updatePointList() {
     const active = i === selectedIdx ? 'active' : '';
     html += `<div class="point-item ${active}" onclick="selectPoint(${i})">
       <span class="idx">#${i+1}</span>
-      <span class="coords">(${p.x.toFixed(3)}, ${p.y.toFixed(3)})</span>
+      <span class="coords">(${p.x.toFixed(3)}, ${p.y.toFixed(3)})</span>${p.stopTime > 0 ? `<span style="color:#ff9800;font-size:10px;flex-shrink:0">⏱${p.stopTime}s</span>` : ''}
       <button class="del-btn" onclick="event.stopPropagation();deletePoint(${i})">✕</button>
     </div>`;
   });
@@ -731,32 +770,61 @@ function undo() {
 function parseCSV(text) {
   const lines = text.split('\n').filter(line => line.trim() !== '');
   const parsed = [];
+  sourceHasStopTime = false;
+
   for (const line of lines) {
     const parts = line.split(',');
     if (parts.length < 4) continue;
-    // first field might be "id,rest" or "id<TAB>x,y,z,w"
-    // handle both tab-separated and comma-separated
-    let fields;
+
+    let x, y, z, w, stopTime = 0;
+
     if (parts.length === 4) {
-      // maybe the first field starts with an index
+      // x,y,z,w  or  id<TAB>x,y,z,w
       const first = parts[0];
       const idxMatch = first.match(/^(\d+)[\s,]+(.+)/);
       if (idxMatch) {
-        fields = [idxMatch[2], parts[1], parts[2], parts[3]];
+        x = parseFloat(idxMatch[2]);
+        y = parseFloat(parts[1]);
+        z = parseFloat(parts[2]);
+        w = parseFloat(parts[3]);
       } else {
-        fields = [parts[0], parts[1], parts[2], parts[3]];
+        x = parseFloat(parts[0]);
+        y = parseFloat(parts[1]);
+        z = parseFloat(parts[2]);
+        w = parseFloat(parts[3]);
       }
-    } else if (parts.length >= 5) {
-      fields = [parts[1], parts[2], parts[3], parts[4]];
+    } else if (parts.length === 5) {
+      // Could be  x,y,z,w,stopTime  or  id,x,y,z,w
+      // Heuristic: integer-only first field → id format
+      if (/^\d+$/.test(parts[0].trim())) {
+        // id,x,y,z,w  (no stop_time)
+        x = parseFloat(parts[1]);
+        y = parseFloat(parts[2]);
+        z = parseFloat(parts[3]);
+        w = parseFloat(parts[4]);
+      } else {
+        // x,y,z,w,stopTime
+        x = parseFloat(parts[0]);
+        y = parseFloat(parts[1]);
+        z = parseFloat(parts[2]);
+        w = parseFloat(parts[3]);
+        stopTime = parseFloat(parts[4]);
+        if (isNaN(stopTime)) stopTime = 0;
+        if (stopTime > 0) sourceHasStopTime = true;
+      }
     } else {
-      continue;
+      // 6+ parts:  id,x,y,z,w,stopTime
+      x = parseFloat(parts[1]);
+      y = parseFloat(parts[2]);
+      z = parseFloat(parts[3]);
+      w = parseFloat(parts[4]);
+      stopTime = parseFloat(parts[5]);
+      if (isNaN(stopTime)) stopTime = 0;
+      if (stopTime > 0) sourceHasStopTime = true;
     }
-    const x = parseFloat(fields[0]);
-    const y = parseFloat(fields[1]);
-    const z = parseFloat(fields[2]);
-    const w = parseFloat(fields[3]);
+
     if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(w)) {
-      parsed.push({ x, y, z, w });
+      parsed.push({ x, y, z, w, stopTime });
     }
   }
   return parsed;
@@ -853,6 +921,11 @@ async function loadCSV() {
           toast('YAML 解析失败: ' + err.message);
         }
       }
+
+      // Save file handles for "上次文件" one-click reopen
+      const pgmHandle = pgmFile ? handles.find(h => h.name === pgmFile.name) : null;
+      const yamlHandle = yamlFile ? handles.find(h => h.name === yamlFile.name) : null;
+      saveSessionHandles({ csv: csvHandles[0], pgm: pgmHandle, yaml: yamlHandle });
 
       if (mapLoaded && pgmFile) {
         updateMapInfo();
@@ -969,9 +1042,15 @@ document.getElementById('fileInput').addEventListener('change', e => {
 
 function exportCSV() {
   if (points.length === 0) { toast('没有可导出的点位'); return; }
+  // Include stopTime column if source had it OR any point has non-zero stopTime
+  const hasStop = sourceHasStopTime || points.some(p => p.stopTime > 0);
   let csv = '';
   points.forEach((p, i) => {
-    csv += `${p.x},${p.y},${p.z},${p.w}\n`;
+    if (hasStop) {
+      csv += `${p.x},${p.y},${p.z},${p.w},${p.stopTime || 0}\n`;
+    } else {
+      csv += `${p.x},${p.y},${p.z},${p.w}\n`;
+    }
   });
 
   // Direct write via File System Access API (Chromium)
@@ -1012,6 +1091,174 @@ function toast(msg) {
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// ============================================================
+//  Settings (persisted to localStorage)
+// ============================================================
+const SETTINGS_KEY = 'waypoint_editor_settings';
+
+let settings = {
+  showGrid: true
+};
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // merge with defaults to handle new keys gracefully
+      settings = { ...settings, ...parsed };
+    }
+  } catch (e) {
+    // ignore corrupt data
+  }
+  // sync UI
+  document.getElementById('showGridToggle').checked = settings.showGrid;
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch (e) {
+    // storage full or disabled — silently ignore
+  }
+}
+
+function toggleSettings() {
+  const panel = document.getElementById('settingsPanel');
+  const overlay = document.getElementById('settingsOverlay');
+  const isOpen = panel.classList.toggle('show');
+  overlay.classList.toggle('show', isOpen);
+}
+
+function applySetting(key, value) {
+  settings[key] = value;
+  saveSettings();
+  render();
+  // close settings panel automatically
+  toggleSettings();
+  toast('设置已保存');
+}
+
+// ============================================================
+//  Last-session file handles (IndexedDB)
+//  Saves CSV/PGM/YAML handles so "上次文件" reopens in one click.
+// ============================================================
+const HANDLE_DB = 'waypoint_editor_db';
+const HANDLE_STORE = 'handles';
+
+function openHandleDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(HANDLE_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(HANDLE_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveSessionHandles(handles) {
+  try {
+    const db = await openHandleDB();
+    const tx = db.transaction(HANDLE_STORE, 'readwrite');
+    tx.objectStore(HANDLE_STORE).put(handles, 'last');
+    await new Promise(r => { tx.oncomplete = r; });
+  } catch (_) { /* ignore */ }
+}
+
+async function loadSessionHandles() {
+  try {
+    const db = await openHandleDB();
+    const tx = db.transaction(HANDLE_STORE, 'readonly');
+    return await new Promise((resolve, reject) => {
+      const req = tx.objectStore(HANDLE_STORE).get('last');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (_) { return null; }
+}
+
+async function clearSessionHandles() {
+  try {
+    const db = await openHandleDB();
+    const tx = db.transaction(HANDLE_STORE, 'readwrite');
+    tx.objectStore(HANDLE_STORE).delete('last');
+    await new Promise(r => { tx.oncomplete = r; });
+  } catch (_) {}
+}
+
+/** Reopen the last imported CSV + PGM + YAML in one click */
+async function openLastSession() {
+  const handles = await loadSessionHandles();
+  if (!handles || !handles.csv) {
+    toast('没有上次的文件记录');
+    return;
+  }
+
+  // Check / request read permission
+  try {
+    if (handles.csv.queryPermission) {
+      const perm = await handles.csv.queryPermission({ mode: 'read' });
+      if (perm !== 'granted') {
+        const req = await handles.csv.requestPermission({ mode: 'read' });
+        if (req !== 'granted') { toast('需要读取权限'); return; }
+      }
+    }
+  } catch (_) {}
+
+  try {
+    // Read CSV
+    const csvFile = await handles.csv.getFile();
+    const csvText = await csvFile.text();
+    const data = parseCSV(csvText);
+    if (data.length === 0) { toast('CSV 解析失败'); return; }
+
+    undoStack = [JSON.parse(JSON.stringify(data))];
+    points = data;
+    selectedIdx = -1;
+    csvWriteHandle = handles.csv;
+    csvFileName = handles.csv.name;
+    updatePointList();
+    updatePropPanel();
+    updatePointCount();
+
+    let hasMap = false;
+
+    // Read PGM if handle exists
+    if (handles.pgm) {
+      try {
+        const pgmFile = await handles.pgm.getFile();
+        const buf = await pgmFile.arrayBuffer();
+        parsePGM(buf, handles.pgm.name);
+        hasMap = true;
+      } catch (err) {
+        toast('地图文件读取失败: ' + err.message);
+      }
+    }
+
+    // Read YAML if map loaded and handle exists
+    if (hasMap && handles.yaml) {
+      try {
+        const yamlFile = await handles.yaml.getFile();
+        const yamlText = await yamlFile.text();
+        parseYAML(yamlText);
+      } catch (err) {
+        toast('YAML 配置读取失败: ' + err.message);
+      }
+    }
+
+    if (mapLoaded) {
+      updateMapInfo();
+      fitView();
+      toast(`已恢复上次文件: ${handles.csv.name}`);
+    } else {
+      fitView();
+      toast(`已恢复 ${data.length} 个点 (${handles.csv.name})`);
+    }
+  } catch (err) {
+    toast('无法打开上次的文件，文件可能已被移动或删除');
+    await clearSessionHandles();
+  }
 }
 
 // ============================================================
@@ -1185,11 +1432,6 @@ function parseYAML(text) {
   toast(`地图坐标已配置: 分辨率=${resolution}, 原点=(${origin[0]}, ${origin[1]})`);
 }
 
-/** Open PGM file picker (manual map loading) */
-function loadMap() {
-  document.getElementById('pgmInput').click();
-}
-
 /** Handle PGM file from manual picker, then prompt for optional YAML */
 document.getElementById('pgmInput').addEventListener('change', function(e) {
   const file = e.target.files[0];
@@ -1255,35 +1497,17 @@ function applyMapConfig() {
 }
 
 /** Clear the loaded map */
-function clearMap() {
-  mapImage = null;
-  mapLoaded = false;
-  mapHasYaml = false;
-  mapWidth = 0;
-  mapHeight = 0;
-  document.getElementById('mapConfig').classList.remove('show');
-  document.getElementById('mapInfo').style.display = 'none';
-  document.getElementById('clearMapBtn').style.display = 'none';
-  render();
-  // Re-fit to points if any
-  if (points.length > 0) fitView();
-  toast('地图已移除');
-}
-
 /** Update map info in toolbar */
 function updateMapInfo() {
   const el = document.getElementById('mapInfo');
-  const clearBtn = document.getElementById('clearMapBtn');
   if (mapLoaded) {
     const res = mapResolution;
     const ox = mapOrigin.x.toFixed(2);
     const oy = mapOrigin.y.toFixed(2);
     el.textContent = `🗺 ${mapWidth}×${mapHeight}  ${res} m/px  原点(${ox}, ${oy})`;
     el.style.display = 'inline';
-    clearBtn.style.display = 'inline';
   } else {
     el.style.display = 'none';
-    clearBtn.style.display = 'none';
   }
 }
 
@@ -1329,6 +1553,7 @@ document.addEventListener('keydown', e => {
 //  Init
 // ============================================================
 resize();
+loadSettings();
 updatePointList();
 updatePropPanel();
 toast('点击「导入」加载 CSV 文件');
