@@ -1,0 +1,13 @@
+{
+  "name": "camera-davinci",
+  "description": "在 davinci-mini 开发板上启动、停止或检查 USB 摄像头。自动修复权限、启动 ROS 摄像头节点、启动 Web 视频流 (8080端口)，支持浏览器直接查看",
+  "command": "camera",
+  "parameters": [
+    {
+      "name": "action",
+      "description": "操作类型: start (启动/修复), stop (停止), status (查看状态), check (仅检查权限和设备)",
+      "required": false,
+      "default": "start"
+    }
+  ]
+}

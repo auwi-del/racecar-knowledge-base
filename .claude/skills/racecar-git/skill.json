@@ -1,0 +1,6 @@
+{
+  "name": "racecar-git",
+  "description": "Manage the racecar git repository on davinci-mini. SSH to 192.168.5.100, scope: only ~/racecar, all other repos ignored.",
+  "command": "git",
+  "parameters": []
+}

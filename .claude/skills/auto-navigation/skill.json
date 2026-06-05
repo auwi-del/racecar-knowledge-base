@@ -1,0 +1,12 @@
+{
+  "name": "auto-navigation",
+  "description": "从SSH连接到启动多点导航全自动化。自动SSH连接、检查地图、启动导航栈、发布航点、监控执行状态",
+  "command": "navigate",
+  "parameters": [
+    {
+      "name": "waypoints",
+      "description": "航点列表，JSON格式 [[x1,y1], [x2,y2], ...]。留空则使用默认航点或交互式询问",
+      "required": false
+    }
+  ]
+}

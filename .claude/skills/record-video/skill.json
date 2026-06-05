@@ -1,0 +1,13 @@
+{
+  "name": "record-video",
+  "description": "在 davinci-mini 开发板上录制摄像头视频，自动转 MP4 并拷贝到 Windows 桌面",
+  "command": "record",
+  "parameters": [
+    {
+      "name": "duration",
+      "description": "录制时长（秒），范围 10~500",
+      "required": false,
+      "default": "10"
+    }
+  ]
+}
