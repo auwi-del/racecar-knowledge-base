@@ -440,13 +440,14 @@ function drawPoint(i) {
   const p = points[i];
   const s = worldToScreen(p.x, p.y);
   const isSel = i === selectedIdx;
+  const hasStop = p.stopTime > 0;
   const radius = isSel ? 10 : 7;
 
   // arrow (orientation)
   // yaw from quaternion (z,w): θ = 2*atan2(z, w)
   const yaw = 2 * Math.atan2(p.z, p.w);
   const arrLen = isSel ? 22 : 16;
-  ctx.strokeStyle = isSel ? '#e94560' : '#4fc3f7';
+  ctx.strokeStyle = isSel ? '#e94560' : (hasStop ? '#ff9800' : '#4fc3f7');
   ctx.lineWidth = isSel ? 3 : 2;
   ctx.beginPath();
   ctx.moveTo(s.x, s.y);
@@ -456,7 +457,7 @@ function drawPoint(i) {
   // circle
   ctx.beginPath();
   ctx.arc(s.x, s.y, radius, 0, Math.PI * 2);
-  ctx.fillStyle = isSel ? '#e94560' : '#4fc3f7';
+  ctx.fillStyle = isSel ? '#e94560' : (hasStop ? '#ff9800' : '#4fc3f7');
   ctx.fill();
   if (isSel) {
     ctx.strokeStyle = '#fff';
