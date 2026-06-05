@@ -107,7 +107,7 @@ test -f "/path/to/local/file.csv" && echo 'found' || echo 'not found'
 
 **2.2 检查文件格式（CSV 格式校验）：**
 
-读取文件前几行，确认格式为 `x, y, z, w`（每行 4 个逗号分隔的浮点数）：
+读取文件前几行，确认格式为 `x, y, z, w`（每行 4 个逗号分隔的浮点数），也可能有第 5 列 `stop_time`（停等秒数）：
 
 ```bash
 head -3 "/path/to/local/file.csv"
@@ -143,5 +143,5 @@ ssh davinci-mini@192.168.5.100 "head -3 /home/davinci-mini/racecar/src/racecar/s
 
 - 下载时目录 `./点位管理器/` 会自动创建，每次下载都新建一个时间戳子目录
 - 上传会**覆盖**板上的 `out_test.csv`，原文件不会被备份（如有需要先 download）
-- 只校验 CSV 格式是否为 4 列浮点数，不校验坐标值是否在地图范围内
+- 只校验 CSV 格式是否为 4~5 列浮点数（第 5 列为可选的 `stop_time` 停等秒数），不校验坐标值是否在地图范围内
 - 上传后小车正在运行的导航不受影响，下次启动 `go.py` 时使用新航点
