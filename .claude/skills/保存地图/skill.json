@@ -1,6 +1,0 @@
-{
-  "name": "save-map",
-  "description": "将 davinci-mini 开发板上的最新地图保存到本机 Windows 桌面",
-  "command": "保存地图",
-  "parameters": []
-}
