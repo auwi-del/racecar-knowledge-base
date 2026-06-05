@@ -4,7 +4,7 @@
 > 最后更新：2026-06-05
 
 
-##启动
+## 启动
 bash ~/racecar/car.sh
 或
 cd racecar
@@ -41,7 +41,7 @@ ros2 run racecar get.py   #（先不运行）膨胀后运行
         pkill-9-f”ros-args”
 关闭所有终端
 
-##运行多点导航
+## 运行多点导航
 ros2 run racecar go.py（先不运行）膨胀后运行
 
 Claude提示词以及skill
