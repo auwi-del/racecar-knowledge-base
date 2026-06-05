@@ -25,7 +25,7 @@ disable-model-invocation: true
 
 根据传入的 `{{args}}` 分支处理：
 
-- **无参数 / 空字符串** → 编译全部包：`colcon build`
+- **无参数 / 空字符串** → **默认编译 racecar 包**：`colcon build --packages-select racecar`
 - **包名（如 racecar, nav2_waypoint_cycle）** → 只编译指定包：`colcon build --packages-select <包名>`
 - **"all"** → 全量编译全部包
 - **"clean"** → 先清理再全量编译：`colcon build --cmake-clean-first`
@@ -50,9 +50,9 @@ ssh davinci-mini@192.168.5.100 "cd ~/racecar && source /opt/ros/humble/setup.bas
 ```
 
 其中 `[OPTIONS]` 根据参数替换为：
-- 无参数 → 空
-- 单包 → `--packages-select <包名>`
-- all → 空（全量）
+- 无参数 → `--packages-select racecar`（默认只编译 racecar 包）
+- 单包名 → `--packages-select <包名>`
+- all → 空（全量编译所有包）
 - clean → `--cmake-clean-first`
 - force → `--continue-on-error`
 
@@ -135,9 +135,9 @@ colcon 输出中每个包的状态：
 
 | 参数 | 类型 | 说明 | 示例 |
 |------|------|------|------|
-| 无参数 | — | 编译全部包 | `/colcon-build` |
+| 无参数 | — | 默认编译 racecar 包 | `/colcon-build` |
 | `<包名>` | string | 只编译指定包 | `/colcon-build racecar` |
-| `all` | string | 全量编译 | `/colcon-build all` |
+| `all` | string | 全量编译所有包 | `/colcon-build all` |
 | `clean` | string | 清理后全量编译 | `/colcon-build clean` |
 | `force` | string | 忽略错误继续编译 | `/colcon-build force` |
 
