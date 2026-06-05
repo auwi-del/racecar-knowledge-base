@@ -1,6 +1,6 @@
 {
   "name": "csv-manager",
-  "description": "管理航点CSV文件和地图文件：下载到桌面备份（时间戳目录），或上传替换小车上的航点文件",
+  "description": "管理航点CSV文件和地图文件：下载到本地备份（时间戳目录），或上传替换小车上的航点文件",
   "command": "csv",
   "parameters": [
     {

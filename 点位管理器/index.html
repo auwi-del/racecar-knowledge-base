@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>点位编辑器 — Waypoint Editor</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; user-select: none; }
+
+/* ---- Toolbar ---- */
+.toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+.toolbar .title { font-size: 15px; font-weight: 600; margin-right: 16px; color: #e94560; white-space: nowrap; }
+.toolbar .title small { font-weight: 400; font-size: 11px; color: #888; margin-left: 6px; }
+.toolbar button { padding: 5px 14px; border: 1px solid #0f3460; border-radius: 4px; background: #1a1a40; color: #ccc; cursor: pointer; font-size: 13px; transition: .15s; white-space: nowrap; }
+.toolbar button:hover { background: #e94560; color: #fff; border-color: #e94560; }
+.toolbar .spacer { flex: 1; }
+.toolbar .info { font-size: 12px; color: #888; }
+
+/* ---- Main body ---- */
+.main { display: flex; flex: 1; min-height: 0; }
+
+/* ---- Canvas ---- */
+.canvas-wrap { flex: 1; position: relative; overflow: hidden; background: #0d0d1a; cursor: grab; }
+.canvas-wrap:active { cursor: grabbing; }
+#canvas { width: 100%; height: 100%; display: block; }
+#canvas-crosshair { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #555; pointer-events: none; background: rgba(13,13,26,.7); padding: 2px 10px; border-radius: 3px; }
+#canvas-coords { position: absolute; bottom: 8px; right: 12px; font-size: 11px; color: #888; pointer-events: none; font-family: monospace; }
+
+/* ---- Side panel ---- */
+.sidebar { width: 280px; background: #16213e; border-left: 1px solid #0f3460; display: flex; flex-direction: column; flex-shrink: 0; min-height: 0; }
+
+/* property editor */
+.prop-panel { padding: 12px; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+.prop-panel h3 { font-size: 13px; color: #e94560; margin-bottom: 8px; }
+.prop-panel .no-sel { font-size: 12px; color: #666; font-style: italic; }
+.prop-grid { display: grid; grid-template-columns: 24px 1fr; gap: 4px 6px; align-items: center; font-size: 13px; }
+.prop-grid label { color: #aaa; text-align: right; font-family: monospace; }
+.prop-grid input { padding: 3px 6px; border: 1px solid #0f3460; border-radius: 3px; background: #1a1a40; color: #e0e0e0; font-size: 13px; font-family: monospace; width: 100%; outline: none; }
+.prop-grid input:focus { border-color: #e94560; }
+.prop-grid .angle-row { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.prop-grid .angle-row label { font-size: 11px; color: #888; }
+.prop-grid .angle-row span { font-size: 12px; color: #4fc3f7; font-family: monospace; }
+
+/* point list */
+.point-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+.point-list .pl-header { padding: 6px 12px; font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: .5px; }
+.point-item { display: flex; align-items: center; padding: 4px 12px; cursor: pointer; transition: .1s; font-size: 13px; gap: 8px; }
+.point-item:hover { background: #1a1a40; }
+.point-item.active { background: #e9456022; border-left: 3px solid #e94560; }
+.point-item .idx { color: #e94560; font-weight: 600; min-width: 20px; font-size: 11px; }
+.point-item .coords { color: #aaa; font-family: monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.point-item .del-btn { margin-left: auto; background: none; border: none; color: #555; cursor: pointer; font-size: 14px; padding: 0 2px; opacity: 0; transition: .15s; }
+.point-item:hover .del-btn { opacity: 1; }
+.point-item .del-btn:hover { color: #e94560; }
+
+/* map config panel */
+.map-config { display: none; padding: 12px; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+.map-config.show { display: block; }
+.map-config h3 { font-size: 13px; color: #e94560; margin-bottom: 6px; }
+.map-config .mc-row { font-size: 12px; color: #888; margin-bottom: 2px; font-family: monospace; }
+.map-config label { font-size: 12px; color: #888; display: block; margin-top: 6px; }
+.map-config input { width: 100%; padding: 3px 6px; border: 1px solid #0f3460; border-radius: 3px; background: #1a1a40; color: #e0e0e0; font-size: 12px; font-family: monospace; outline: none; margin-top: 2px; }
+.map-config input:focus { border-color: #e94560; }
+.map-config button { margin-top: 8px; width: 100%; padding: 4px; border: 1px solid #0f3460; border-radius: 3px; background: #1a1a40; color: #ccc; cursor: pointer; font-size: 12px; }
+.map-config button:hover { background: #e94560; color: #fff; border-color: #e94560; }
+
+/* scrollbar */
+.point-list::-webkit-scrollbar { width: 4px; }
+.point-list::-webkit-scrollbar-track { background: transparent; }
+.point-list::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+/* ---- Toast ---- */
+.toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 8px 20px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 100; }
+.toast.show { opacity: 1; }
+
+/* ---- responsive ---- */
+@media (max-width: 700px) {
+  .sidebar { width: 200px; }
+  .toolbar .title small { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <div class="title">🗺 点位编辑 <small>Waypoint Editor</small></div>
+  <button onclick="loadCSV()">📂 导入</button>
+  <button onclick="undo()">↩ 撤销</button>
+  <button onclick="exportCSV()">💾 保存</button>
+  <button onclick="addPoint()">＋ 新增</button>
+  <button onclick="loadMap()">🗺 地图</button>
+  <button onclick="clearMap()" id="clearMapBtn" style="display:none">✕ 移除地图</button>
+  <div class="spacer"></div>
+  <span class="info" id="mapInfo" style="display:none"></span>
+  <span class="info" id="pointCount">0 个点</span>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="canvas-wrap" id="canvasWrap">
+    <canvas id="canvas"></canvas>
+    <div id="canvas-crosshair">滚轮缩放 · 拖拽平移 · 拖动点位 · F 适配 · Ctrl+S 保存 · Ctrl+Z 撤销</div>
+    <div id="canvas-coords"></div>
+  </div>
+
+  <div class="sidebar">
+    <div class="prop-panel" id="propPanel">
+      <h3>📐 属性</h3>
+      <div id="propContent">
+        <div class="no-sel">未选中点位</div>
+      </div>
+    </div>
+    <div class="map-config" id="mapConfig">
+      <h3>🗺 地图配置</h3>
+      <div class="mc-row" id="mcSize"></div>
+      <label>分辨率 (m/pixel)</label>
+      <input id="mcRes" type="number" step="any" value="0.05">
+      <label>原点 X (m)</label>
+      <input id="mcOx" type="number" step="any" value="0">
+      <label>原点 Y (m)</label>
+      <input id="mcOy" type="number" step="any" value="0">
+      <button onclick="applyMapConfig()">应用</button>
+      <button onclick="loadYAML()" style="margin-top:4px">📄 导入 YAML 配置</button>
+    </div>
+    <div class="point-list" id="pointList">
+      <div class="pl-header">点位列表</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Hidden file input -->
+<input type="file" id="fileInput" accept=".csv,.pgm,.png,.yaml,.yml" multiple style="display:none">
+<input type="file" id="pgmInput" accept=".pgm,.png,.jpg,.jpeg,.bmp" style="display:none">
+<input type="file" id="yamlInput" accept=".yaml,.yml" style="display:none">
+
+<script>
+// ============================================================
+//  Core
+// ============================================================
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvasWrap');
+
+let points = [];
+let selectedIdx = -1;
+
+// view transform
+let view = { cx: 0, cy: 0, scale: 1 };
+
+// drag state
+let drag = { active: false, mode: null, startX: 0, startY: 0,
+             viewStart: null, pointStart: null, pointIdx: -1,
+             didMove: false };
+
+// undo history
+const MAX_UNDO = 100;
+let undoStack = [];
+
+// map state
+let mapImage = null;        // offscreen canvas from parsed PGM
+let mapOrigin = { x: 0, y: 0 };
+let mapResolution = 0.05;
+let mapWidth = 0;           // pixels
+let mapHeight = 0;          // pixels
+let mapLoaded = false;
+let mapHasYaml = false;
+
+// direct file write (File System Access API)
+let csvWriteHandle = null;  // FileSystemFileHandle for overwriting original CSV
+let csvFileName = '';       // original CSV filename
+
+// ============================================================
+//  Resize canvas
+// ============================================================
+function resize() {
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  render();
+}
+window.addEventListener('resize', resize);
+
+// ============================================================
+//  Coordinate transforms
+// ============================================================
+function worldToScreen(wx, wy) {
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  return {
+    x: (wx - view.cx) * view.scale + cx,
+    y: (wy - view.cy) * view.scale + cy
+  };
+}
+function screenToWorld(sx, sy) {
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  return {
+    x: (sx - cx) / view.scale + view.cx,
+    y: (sy - cy) / view.scale + view.cy
+  };
+}
+function dist(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+// ============================================================
+//  Fit view to all points
+// ============================================================
+function fitView() {
+  if (points.length === 0 && (!mapLoaded || !mapImage)) {
+    view.cx = 0; view.cy = 0; view.scale = 1;
+    render(); return;
+  }
+
+  let minX, maxX, minY, maxY;
+
+  if (mapLoaded && mapImage && points.length > 0) {
+    // === Smart fit: show waypoints within map context ===
+    // Waypoint bounds
+    let wpMinX = Infinity, wpMaxX = -Infinity, wpMinY = Infinity, wpMaxY = -Infinity;
+    points.forEach(p => {
+      if (p.x < wpMinX) wpMinX = p.x; if (p.x > wpMaxX) wpMaxX = p.x;
+      if (p.y < wpMinY) wpMinY = p.y; if (p.y > wpMaxY) wpMaxY = p.y;
+    });
+    // Map bounds
+    const mMinX = mapOrigin.x;
+    const mMaxX = mapOrigin.x + mapWidth * mapResolution;
+    const mMinY = mapOrigin.y;
+    const mMaxY = mapOrigin.y + mapHeight * mapResolution;
+
+    // Take the tighter bounds: clip waypoints to map, but use waypoints as focus
+    // Add 30% padding around the waypoint bounding box
+    const wpPadX = (wpMaxX - wpMinX) * 0.3 || 5;
+    const wpPadY = (wpMaxY - wpMinY) * 0.3 || 5;
+    minX = Math.max(mMinX, wpMinX - wpPadX);
+    maxX = Math.min(mMaxX, wpMaxX + wpPadX);
+    minY = Math.max(mMinY, wpMinY - wpPadY);
+    maxY = Math.min(mMaxY, wpMaxY + wpPadY);
+  } else if (mapLoaded && mapImage) {
+    // Map only: fit to full map
+    minX = mapOrigin.x;
+    maxX = mapOrigin.x + mapWidth * mapResolution;
+    minY = mapOrigin.y;
+    maxY = mapOrigin.y + mapHeight * mapResolution;
+  } else {
+    // Points only
+    minX = Infinity; maxX = -Infinity; minY = Infinity; maxY = -Infinity;
+    points.forEach(p => {
+      if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+    });
+  }
+
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const pad = 2;
+  const rangeX = (maxX - minX) + pad * 2;
+  const rangeY = (maxY - minY) + pad * 2;
+  const margin = 80;
+  const scaleX = (canvas.width - margin * 2) / (rangeX || 1);
+  const scaleY = (canvas.height - margin * 2) / (rangeY || 1);
+  view.scale = Math.min(scaleX, scaleY, 200);
+  view.cx = cx;
+  view.cy = cy;
+  render();
+}
+
+/** Fit to the full map extent (ignore waypoints) */
+function fitMapView() {
+  if (!mapLoaded || !mapImage) { fitView(); return; }
+  const mapW = mapWidth * mapResolution;
+  const mapH = mapHeight * mapResolution;
+  const cx = mapOrigin.x + mapW / 2;
+  const cy = mapOrigin.y + mapH / 2;
+  const margin = 80;
+  const scaleX = (canvas.width - margin * 2) / (mapW || 1);
+  const scaleY = (canvas.height - margin * 2) / (mapH || 1);
+  view.scale = Math.min(scaleX, scaleY, 200);
+  view.cx = cx;
+  view.cy = cy;
+  render();
+}
+
+// ============================================================
+//  Hit testing
+// ============================================================
+function hitTest(mx, my, radius) {
+  radius = radius || 12;
+  let best = -1, bestDist = Infinity;
+  for (let i = 0; i < points.length; i++) {
+    const s = worldToScreen(points[i].x, points[i].y);
+    const d = dist(s, { x: mx, y: my });
+    if (d < radius && d < bestDist) {
+      bestDist = d;
+      best = i;
+    }
+  }
+  return best;
+}
+
+// ============================================================
+//  Render
+// ============================================================
+function render() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // map background
+  drawMap();
+
+  // background grid
+  drawGrid();
+
+  if (points.length === 0) {
+    ctx.fillStyle = '#444';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('点击「导入」加载 CSV，或点击「新增」添加点位', W/2, H/2);
+    return;
+  }
+
+  // draw connections (path)
+  ctx.strokeStyle = '#0f346088';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 6]);
+  ctx.beginPath();
+  for (let i = 0; i < points.length; i++) {
+    const s = worldToScreen(points[i].x, points[i].y);
+    if (i === 0) ctx.moveTo(s.x, s.y);
+    else ctx.lineTo(s.x, s.y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // draw points
+  for (let i = 0; i < points.length; i++) {
+    drawPoint(i);
+  }
+}
+
+function drawGrid() {
+  const W = canvas.width, H = canvas.height;
+  const scale = view.scale;
+
+  // compute grid spacing
+  let rawStep = 1;
+  const targetPixels = 80;
+  const magnitudes = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
+  let bestStep = 1;
+  for (const m of magnitudes) {
+    if (m * scale >= targetPixels) { bestStep = m; break; }
+  }
+
+  const topLeft = screenToWorld(0, 0);
+  const bottomRight = screenToWorld(W, H);
+
+  const startX = Math.floor(topLeft.x / bestStep) * bestStep;
+  const startY = Math.floor(topLeft.y / bestStep) * bestStep;
+
+  ctx.strokeStyle = '#222244';
+  ctx.lineWidth = 1;
+  ctx.font = '10px monospace';
+  ctx.fillStyle = '#444466';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+
+  for (let x = startX; x <= bottomRight.x; x += bestStep) {
+    const s = worldToScreen(x, 0);
+    ctx.beginPath();
+    ctx.moveTo(s.x, 0);
+    ctx.lineTo(s.x, H);
+    ctx.stroke();
+    ctx.fillText(x.toFixed(1), s.x, 4);
+  }
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let y = startY; y <= bottomRight.y; y += bestStep) {
+    const s = worldToScreen(0, y);
+    ctx.beginPath();
+    ctx.moveTo(0, s.y);
+    ctx.lineTo(W, s.y);
+    ctx.stroke();
+    ctx.fillText(y.toFixed(1), W - 4, s.y);
+  }
+
+  // axes
+  const origin = worldToScreen(0, 0);
+  ctx.strokeStyle = '#e9456044';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(origin.x, 0);
+  ctx.lineTo(origin.x, H);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, origin.y);
+  ctx.lineTo(W, origin.y);
+  ctx.stroke();
+}
+
+function drawPoint(i) {
+  const p = points[i];
+  const s = worldToScreen(p.x, p.y);
+  const isSel = i === selectedIdx;
+  const radius = isSel ? 10 : 7;
+
+  // arrow (orientation)
+  // yaw from quaternion (z,w): θ = 2*atan2(z, w)
+  const yaw = 2 * Math.atan2(p.z, p.w);
+  const arrLen = isSel ? 22 : 16;
+  ctx.strokeStyle = isSel ? '#e94560' : '#4fc3f7';
+  ctx.lineWidth = isSel ? 3 : 2;
+  ctx.beginPath();
+  ctx.moveTo(s.x, s.y);
+  ctx.lineTo(s.x + Math.cos(yaw) * arrLen, s.y + Math.sin(yaw) * arrLen);
+  ctx.stroke();
+
+  // circle
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = isSel ? '#e94560' : '#4fc3f7';
+  ctx.fill();
+  if (isSel) {
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // label
+  ctx.fillStyle = isSel ? '#fff' : '#aaa';
+  ctx.font = isSel ? 'bold 12px sans-serif' : '11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(i + 1, s.x + radius + 3, s.y - radius - 2);
+}
+
+// ============================================================
+//  Mouse / touch handling
+// ============================================================
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+}
+
+// ---- mouse ----
+canvas.addEventListener('mousedown', e => {
+  const pos = getPos(e);
+  const hit = hitTest(pos.x, pos.y);
+
+  if (e.button === 0) {
+    if (hit >= 0) {
+      // start drag point
+      selectPoint(hit);
+      drag.mode = 'point';
+      drag.startX = pos.x;
+      drag.startY = pos.y;
+      drag.pointIdx = hit;
+      drag.pointStart = { x: points[hit].x, y: points[hit].y };
+      drag.didMove = false;
+      drag.active = true;
+    } else {
+      // start pan
+      drag.mode = 'pan';
+      drag.startX = pos.x;
+      drag.startY = pos.y;
+      drag.viewStart = { cx: view.cx, cy: view.cy };
+      drag.active = true;
+      canvas.style.cursor = 'grabbing';
+    }
+  } else if (e.button === 1) {
+    // middle button pan
+    e.preventDefault();
+    drag.mode = 'pan';
+    drag.startX = pos.x;
+    drag.startY = pos.y;
+    drag.viewStart = { cx: view.cx, cy: view.cy };
+    drag.active = true;
+    canvas.style.cursor = 'grabbing';
+  } else if (e.button === 2) {
+    // right click — select but no drag
+    if (hit >= 0) selectPoint(hit);
+    else selectPoint(-1);
+  }
+});
+
+window.addEventListener('mousemove', e => {
+  const pos = getPos(e);
+  if (drag.active) {
+    const dx = pos.x - drag.startX;
+    const dy = pos.y - drag.startY;
+    if (drag.mode === 'pan') {
+      view.cx = drag.viewStart.cx - dx / view.scale;
+      view.cy = drag.viewStart.cy - dy / view.scale;
+      render();
+    } else if (drag.mode === 'point') {
+      const w = screenToWorld(pos.x, pos.y);
+      const startW = screenToWorld(drag.startX, drag.startY);
+      const delta = { x: w.x - startW.x, y: w.y - startW.y };
+      points[drag.pointIdx].x = drag.pointStart.x + delta.x;
+      points[drag.pointIdx].y = drag.pointStart.y + delta.y;
+      drag.didMove = true;
+      updatePropPanel();
+      updatePointList();
+      render();
+    }
+  }
+  // cursor
+  const hit = hitTest(pos.x, pos.y);
+  canvas.style.cursor = hit >= 0 ? 'pointer' : (drag.active ? 'grabbing' : 'grab');
+  // coords
+  const w = screenToWorld(pos.x, pos.y);
+  document.getElementById('canvas-coords').textContent =
+    `(${w.x.toFixed(3)}, ${w.y.toFixed(3)})`;
+});
+
+window.addEventListener('mouseup', e => {
+  if (drag.active) {
+    const wasPointDrag = drag.mode === 'point' && drag.didMove;
+    drag.active = false;
+    canvas.style.cursor = 'grab';
+    if (wasPointDrag) { pushUndo(); toast('已保存位置'); }
+    render();
+  }
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const pos = getPos(e);
+  const before = screenToWorld(pos.x, pos.y);
+  const factor = e.deltaY > 0 ? 0.88 : 1 / 0.88;
+  view.scale = Math.min(Math.max(view.scale * factor, 0.5), 500);
+  const after = screenToWorld(pos.x, pos.y);
+  view.cx += before.x - after.x;
+  view.cy += before.y - after.y;
+  render();
+}, { passive: false });
+
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+// ---- touch ----
+let lastTouchDist = 0;
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    const pos = getPos(e);
+    const hit = hitTest(pos.x, pos.y);
+    if (hit >= 0) {
+      selectPoint(hit);
+      drag.mode = 'point';
+      drag.startX = pos.x;
+      drag.startY = pos.y;
+      drag.pointIdx = hit;
+      drag.pointStart = { x: points[hit].x, y: points[hit].y };
+      drag.didMove = false;
+      drag.active = true;
+    } else {
+      drag.mode = 'pan';
+      drag.startX = pos.x;
+      drag.startY = pos.y;
+      drag.viewStart = { cx: view.cx, cy: view.cy };
+      drag.active = true;
+    }
+  } else if (e.touches.length === 2) {
+    // pinch zoom
+    const t = e.touches;
+    lastTouchDist = Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    drag.mode = 'pinch';
+    drag.active = true;
+    drag.viewStart = { cx: view.cx, cy: view.cy, scale: view.scale };
+  }
+}, { passive: true });
+
+canvas.addEventListener('touchmove', e => {
+  if (!drag.active) return;
+  e.preventDefault();
+
+  if (drag.mode === 'point' && e.touches.length === 1) {
+    const pos = getPos(e);
+    const w = screenToWorld(pos.x, pos.y);
+    const startW = screenToWorld(drag.startX, drag.startY);
+    points[drag.pointIdx].x = drag.pointStart.x + (w.x - startW.x);
+    points[drag.pointIdx].y = drag.pointStart.y + (w.y - startW.y);
+    updatePropPanel();
+    updatePointList();
+    render();
+  } else if (drag.mode === 'pan' && e.touches.length === 1) {
+    const pos = getPos(e);
+    view.cx = drag.viewStart.cx - (pos.x - drag.startX) / view.scale;
+    view.cy = drag.viewStart.cy - (pos.y - drag.startY) / view.scale;
+    render();
+  } else if (drag.mode === 'pinch' && e.touches.length >= 2) {
+    const t = e.touches;
+    const dist = Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const factor = dist / lastTouchDist;
+    view.scale = Math.min(Math.max(drag.viewStart.scale * factor, 0.5), 500);
+    render();
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  if (drag.active && e.touches.length === 0) {
+    drag.active = false;
+    render();
+  }
+});
+
+// ============================================================
+//  Selection & data helpers
+// ============================================================
+function selectPoint(idx) {
+  if (selectedIdx !== idx) {
+    selectedIdx = idx;
+    updatePropPanel();
+    updatePointList();
+    render();
+  }
+}
+
+function addPoint() {
+  pushUndo();
+  const newIdx = points.length;
+  const offset = points.length > 0
+    ? { x: points[points.length-1].x + 1, y: points[points.length-1].y }
+    : { x: 0, y: 0 };
+  points.push({ x: offset.x, y: offset.y, z: 0, w: 1 });
+  selectedIdx = newIdx;
+  updatePropPanel();
+  updatePointList();
+  updatePointCount();
+  fitView();
+}
+
+function deletePoint(idx) {
+  if (idx < 0 || idx >= points.length) return;
+  pushUndo();
+  points.splice(idx, 1);
+  if (selectedIdx === idx) selectedIdx = -1;
+  else if (selectedIdx > idx) selectedIdx--;
+  updatePropPanel();
+  updatePointList();
+  updatePointCount();
+  render();
+}
+
+function updatePropPanel() {
+  const el = document.getElementById('propContent');
+  if (selectedIdx < 0 || selectedIdx >= points.length) {
+    el.innerHTML = '<div class="no-sel">未选中点位</div>';
+    return;
+  }
+  const p = points[selectedIdx];
+  const yaw = 2 * Math.atan2(p.z, p.w);
+  const yawDeg = (yaw * 180 / Math.PI).toFixed(1);
+  el.innerHTML = `
+    <div class="prop-grid">
+      <label>x</label> <input id="pf_x" type="number" step="any" value="${p.x.toFixed(6)}">
+      <label>y</label> <input id="pf_y" type="number" step="any" value="${p.y.toFixed(6)}">
+      <label>z</label> <input id="pf_z" type="number" step="any" value="${p.z.toFixed(6)}">
+      <label>w</label> <input id="pf_w" type="number" step="any" value="${p.w.toFixed(6)}">
+      <div class="angle-row">
+        <label>朝向</label>
+        <span>${yawDeg}°</span>
+      </div>
+    </div>
+    <button onclick="applyProps()" style="margin-top:6px;width:100%;padding:4px;border:1px solid #0f3460;border-radius:3px;background:#1a1a40;color:#ccc;cursor:pointer;font-size:12px;">更新</button>
+  `;
+}
+
+function applyProps() {
+  if (selectedIdx < 0) return;
+  pushUndo();
+  const p = points[selectedIdx];
+  const x = parseFloat(document.getElementById('pf_x').value);
+  const y = parseFloat(document.getElementById('pf_y').value);
+  const z = parseFloat(document.getElementById('pf_z').value);
+  const w = parseFloat(document.getElementById('pf_w').value);
+  if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(w)) {
+    p.x = x; p.y = y; p.z = z; p.w = w;
+    // normalize quaternion
+    const len = Math.hypot(p.z, p.w);
+    if (len > 0) { p.z /= len; p.w /= len; }
+    updatePropPanel();
+    updatePointList();
+    render();
+    toast('已更新');
+  }
+}
+
+function updatePointList() {
+  const el = document.getElementById('pointList');
+  let html = '<div class="pl-header">点位列表 <span style="color:#888;font-weight:400">(' + points.length + ')</span></div>';
+  points.forEach((p, i) => {
+    const active = i === selectedIdx ? 'active' : '';
+    html += `<div class="point-item ${active}" onclick="selectPoint(${i})">
+      <span class="idx">#${i+1}</span>
+      <span class="coords">(${p.x.toFixed(3)}, ${p.y.toFixed(3)})</span>
+      <button class="del-btn" onclick="event.stopPropagation();deletePoint(${i})">✕</button>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function updatePointCount() {
+  document.getElementById('pointCount').textContent = points.length + ' 个点';
+}
+
+// ============================================================
+//  Undo / Redo
+// ============================================================
+function pushUndo() {
+  undoStack.push(JSON.parse(JSON.stringify(points)));
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+}
+
+function undo() {
+  if (undoStack.length === 0) { toast('没有可撤销的操作'); return; }
+  points = undoStack.pop();
+  if (selectedIdx >= points.length) selectedIdx = points.length - 1;
+  updatePropPanel();
+  updatePointList();
+  updatePointCount();
+  render();
+  toast('已撤销');
+}
+
+// ============================================================
+//  CSV import / export
+// ============================================================
+function parseCSV(text) {
+  const lines = text.split('\n').filter(line => line.trim() !== '');
+  const parsed = [];
+  for (const line of lines) {
+    const parts = line.split(',');
+    if (parts.length < 4) continue;
+    // first field might be "id,rest" or "id<TAB>x,y,z,w"
+    // handle both tab-separated and comma-separated
+    let fields;
+    if (parts.length === 4) {
+      // maybe the first field starts with an index
+      const first = parts[0];
+      const idxMatch = first.match(/^(\d+)[\s,]+(.+)/);
+      if (idxMatch) {
+        fields = [idxMatch[2], parts[1], parts[2], parts[3]];
+      } else {
+        fields = [parts[0], parts[1], parts[2], parts[3]];
+      }
+    } else if (parts.length >= 5) {
+      fields = [parts[1], parts[2], parts[3], parts[4]];
+    } else {
+      continue;
+    }
+    const x = parseFloat(fields[0]);
+    const y = parseFloat(fields[1]);
+    const z = parseFloat(fields[2]);
+    const w = parseFloat(fields[3]);
+    if (!isNaN(x) && !isNaN(y) && !isNaN(z) && !isNaN(w)) {
+      parsed.push({ x, y, z, w });
+    }
+  }
+  return parsed;
+}
+
+async function loadCSV() {
+  // Try File System Access API (Chromium) → gives write handle for direct save
+  if (window.showOpenFilePicker) {
+    try {
+      const handles = await window.showOpenFilePicker({
+        types: [{
+          description: '点位文件 (CSV / 地图 / 配置)',
+          accept: {
+            'text/csv': ['.csv'],
+            'image/x-portable-graymap': ['.pgm'],
+            'image/png': ['.png'],
+            'image/jpeg': ['.jpg', '.jpeg'],
+            'image/bmp': ['.bmp'],
+            'application/x-yaml': ['.yaml', '.yml']
+          }
+        }],
+        multiple: true
+      });
+
+      // Find CSV handle for direct-write capability
+      const csvHandles = handles.filter(h => h.name.toLowerCase().endsWith('.csv'));
+      if (csvHandles.length > 0) {
+        csvWriteHandle = csvHandles[0];
+        csvFileName = csvHandles[0].name;
+      } else {
+        csvWriteHandle = null;
+      }
+
+      // Read all files and process
+      const files = await Promise.all(handles.map(async h => {
+        const file = await h.getFile();
+        return file;
+      }));
+
+      // Categorize by type (same logic as fileInput change handler)
+      const csvFile = files.find(f => f.name.toLowerCase().endsWith('.csv'));
+      if (!csvFile) { toast('未找到 CSV 文件'); return; }
+
+      const baseName = csvFile.name.replace(/\.csv$/i, '');
+      const pgmCandidates = files.filter(f => /\.(pgm|png|jpg|jpeg|bmp)$/i.test(f.name));
+      let pgmFile = pgmCandidates.find(f =>
+        f.name.replace(/\.(pgm|png|jpg|jpeg|bmp)$/i, '') === baseName);
+      if (!pgmFile && pgmCandidates.length > 0) pgmFile = pgmCandidates[0];
+
+      const yamlCandidates = files.filter(f => /\.(yaml|yml)$/i.test(f.name));
+      let yamlFile = yamlCandidates.find(f =>
+        f.name.replace(/\.(yaml|yml)$/i, '') === (pgmFile ? pgmFile.name.replace(/\.(pgm|png|jpg|jpeg|bmp)$/i, '') : baseName));
+      if (!yamlFile && yamlCandidates.length > 0) yamlFile = yamlCandidates[0];
+
+      function readText(file) {
+        return new Promise(resolve => {
+          const r = new FileReader();
+          r.onload = ev => resolve(ev.target.result);
+          r.readAsText(file);
+        });
+      }
+      function readBuffer(file) {
+        return new Promise(resolve => {
+          const r = new FileReader();
+          r.onload = ev => resolve(ev.target.result);
+          r.readAsArrayBuffer(file);
+        });
+      }
+
+      const csvText = await readText(csvFile);
+      const data = parseCSV(csvText);
+      if (data.length === 0) { toast('未解析到有效数据'); return; }
+      undoStack = [JSON.parse(JSON.stringify(data))];
+      points = data;
+      selectedIdx = -1;
+      updatePointList();
+      updatePropPanel();
+      updatePointCount();
+
+      if (pgmFile) {
+        try {
+          const buf = await readBuffer(pgmFile);
+          parsePGM(buf, pgmFile.name);
+        } catch (err) {
+          toast('PGM 解析失败: ' + err.message);
+        }
+      }
+
+      if (pgmFile && yamlFile) {
+        try {
+          const yamlText = await readText(yamlFile);
+          parseYAML(yamlText);
+        } catch (err) {
+          toast('YAML 解析失败: ' + err.message);
+        }
+      }
+
+      if (mapLoaded && pgmFile) {
+        updateMapInfo();
+        fitView();
+        toast(`已导入 ${points.length} 个点，地图 "${pgmFile.name}"`);
+      } else {
+        fitView();
+        const msg = `已导入 ${points.length} 个点`;
+        if (!pgmFile) {
+          toast(msg + '。可再次点击「导入」同时选择地图文件');
+        } else {
+          toast(msg + '，地图已加载。若坐标有偏移，请在右侧面板配置');
+        }
+      }
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      // Fall through to <input> fallback
+    }
+  }
+  // Fallback: use <input type="file">
+  document.getElementById('fileInput').click();
+}
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  const files = Array.from(e.target.files);
+  if (files.length === 0) return;
+
+  // Categorize by type
+  const csvFile = files.find(f => f.name.toLowerCase().endsWith('.csv'));
+  if (!csvFile) { toast('未找到 CSV 文件'); e.target.value = ''; return; }
+
+  const baseName = csvFile.name.replace(/\.csv$/i, '');
+
+  // Match PGM & YAML: prefer same-base-name over first-match
+  const pgmCandidates = files.filter(f => /\.(pgm|png|jpg|jpeg|bmp)$/i.test(f.name));
+  let pgmFile = pgmCandidates.find(f =>
+    f.name.replace(/\.(pgm|png|jpg|jpeg|bmp)$/i, '') === baseName);
+  if (!pgmFile && pgmCandidates.length > 0) pgmFile = pgmCandidates[0];
+
+  const yamlCandidates = files.filter(f => /\.(yaml|yml)$/i.test(f.name));
+  let yamlFile = yamlCandidates.find(f =>
+    f.name.replace(/\.(yaml|yml)$/i, '') === (pgmFile ? pgmFile.name.replace(/\.(pgm|png|jpg|jpeg|bmp)$/i, '') : baseName));
+  if (!yamlFile && yamlCandidates.length > 0) yamlFile = yamlCandidates[0];
+
+  // Helper: read file as text
+  function readText(file) {
+    return new Promise(resolve => {
+      const r = new FileReader();
+      r.onload = ev => resolve(ev.target.result);
+      r.readAsText(file);
+    });
+  }
+  // Helper: read file as ArrayBuffer
+  function readBuffer(file) {
+    return new Promise(resolve => {
+      const r = new FileReader();
+      r.onload = ev => resolve(ev.target.result);
+      r.readAsArrayBuffer(file);
+    });
+  }
+
+  (async () => {
+    // 1. Parse CSV
+    const csvText = await readText(csvFile);
+    const data = parseCSV(csvText);
+    if (data.length === 0) { toast('未解析到有效数据'); return; }
+    csvFileName = csvFile.name; // store for download fallback naming
+    undoStack = [JSON.parse(JSON.stringify(data))];
+    points = data;
+    selectedIdx = -1;
+    updatePointList();
+    updatePropPanel();
+    updatePointCount();
+
+    // 2. Parse PGM if present
+    if (pgmFile) {
+      try {
+        const buf = await readBuffer(pgmFile);
+        parsePGM(buf, pgmFile.name);
+      } catch (err) {
+        toast('PGM 解析失败: ' + err.message);
+      }
+    }
+
+    // 3. Parse YAML if present
+    if (pgmFile && yamlFile) {
+      try {
+        const yamlText = await readText(yamlFile);
+        parseYAML(yamlText);
+      } catch (err) {
+        toast('YAML 解析失败: ' + err.message);
+      }
+    }
+
+    // 4. Finalize view
+    if (mapLoaded) {
+      updateMapInfo();
+      fitView();
+      toast(`已导入 ${points.length} 个点，地图 "${pgmFile.name}"`);
+    } else {
+      fitView();
+      const msg = `已导入 ${points.length} 个点`;
+      if (!pgmFile) {
+        toast(msg + '。可再次点击「导入」同时选择地图文件');
+      } else {
+        toast(msg + '，地图已加载。若坐标有偏移，请在右侧面板配置');
+      }
+    }
+  })();
+
+  e.target.value = '';
+});
+
+function exportCSV() {
+  if (points.length === 0) { toast('没有可导出的点位'); return; }
+  let csv = '';
+  points.forEach((p, i) => {
+    csv += `${p.x},${p.y},${p.z},${p.w}\n`;
+  });
+
+  // Direct write via File System Access API (Chromium)
+  if (csvWriteHandle) {
+    (async () => {
+      try {
+        const writable = await csvWriteHandle.createWritable();
+        await writable.write(csv);
+        await writable.close();
+        toast(`已保存到 ${csvFileName}`);
+      } catch (err) {
+        toast('保存失败: ' + err.message + ' — 请尝试用「导出」下载');
+      }
+    })();
+    return;
+  }
+
+  // Fallback: browser download
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const now = new Date();
+  const ts = `${now.getMonth()+1}${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
+  a.download = csvFileName || `waypoints-${ts}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('已导出 ' + points.length + ' 个点');
+}
+
+// ============================================================
+//  Toast
+// ============================================================
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// ============================================================
+//  Map functions (PGM parser, YAML parser, rendering)
+// ============================================================
+
+/** Draw map image as canvas background with correct world-coord transform */
+function drawMap() {
+  if (!mapImage || !mapLoaded) return;
+  const res = mapResolution;
+  const ox = mapOrigin.x, oy = mapOrigin.y;
+  const h = mapHeight;
+  const W = canvas.width, H = canvas.height;
+
+  // PGM pixel (col, row) → world → screen
+  // ROS convention: origin = center of bottom-left pixel
+  // world_x = origin_x + (col + 0.5) * resolution
+  // world_y = origin_y + (height - 1 - row + 0.5) * resolution
+  // screen_x = (world_x - view.cx) * view.scale + W/2
+  //         = col * res * view.scale + (ox + 0.5*res - view.cx) * view.scale + W/2
+  // screen_y = (world_y - view.cy) * view.scale + H/2
+  //         = row * (-res * view.scale) + (oy + (h-0.5)*res - view.cy) * view.scale + H/2
+  const a = view.scale * res;
+  const d = -view.scale * res;
+  const e = (ox + 0.5 * res - view.cx) * view.scale + W / 2;
+  const f = (oy + (h - 0.5) * res - view.cy) * view.scale + H / 2;
+
+  ctx.setTransform(a, 0, 0, d, e, f);
+  ctx.drawImage(mapImage, 0, 0);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+/** Parse a PGM (binary P5 / ASCII P2 / color PPM P6) file into an offscreen canvas */
+function parsePGM(arrayBuffer, filename) {
+  const decoder = new TextDecoder('ascii');
+  const u8 = new Uint8Array(arrayBuffer);
+  let pos = 0;
+
+  function skipWS() {
+    while (pos < u8.length && u8[pos] <= 32) pos++;
+  }
+  function nextToken() {
+    skipWS();
+    // skip comments (#...)
+    while (pos < u8.length && u8[pos] === 35) {
+      while (pos < u8.length && u8[pos] !== 10 && u8[pos] !== 13) pos++;
+      skipWS();
+    }
+    const start = pos;
+    while (pos < u8.length && u8[pos] > 32) pos++;
+    return decoder.decode(u8.slice(start, pos));
+  }
+
+  const magic = nextToken();
+  const w = parseInt(nextToken());
+  const h = parseInt(nextToken());
+  const maxVal = parseInt(nextToken());
+  skipWS(); // skip one byte of whitespace before binary data
+
+  // Create offscreen canvas
+  const offscreen = document.createElement('canvas');
+  offscreen.width = w;
+  offscreen.height = h;
+  const offCtx = offscreen.getContext('2d');
+  const imgData = offCtx.createImageData(w, h);
+  const pixels = imgData.data;
+
+  if (magic === 'P5') {
+    // Binary grayscale
+    if (maxVal <= 255) {
+      for (let i = 0; i < w * h && pos < u8.length; i++) {
+        const v = u8[pos++];
+        pixels[i * 4] = v;
+        pixels[i * 4 + 1] = v;
+        pixels[i * 4 + 2] = v;
+        pixels[i * 4 + 3] = 255;
+      }
+    } else {
+      // 2 bytes per pixel (big-endian)
+      for (let i = 0; i < w * h && pos + 1 < u8.length; i++) {
+        const v = ((u8[pos] << 8) | u8[pos + 1]) * 255 / maxVal;
+        pos += 2;
+        pixels[i * 4] = v;
+        pixels[i * 4 + 1] = v;
+        pixels[i * 4 + 2] = v;
+        pixels[i * 4 + 3] = 255;
+      }
+    }
+  } else if (magic === 'P6') {
+    // Binary RGB (color PPM)
+    for (let i = 0; i < w * h && pos + 2 < u8.length; i++) {
+      pixels[i * 4] = u8[pos++];
+      pixels[i * 4 + 1] = u8[pos++];
+      pixels[i * 4 + 2] = u8[pos++];
+      pixels[i * 4 + 3] = 255;
+    }
+  } else if (magic === 'P2') {
+    // ASCII grayscale
+    const rest = decoder.decode(u8.slice(pos)).trim().split(/\s+/);
+    for (let i = 0; i < w * h && i < rest.length; i++) {
+      const v = parseInt(rest[i]) * 255 / maxVal;
+      pixels[i * 4] = v;
+      pixels[i * 4 + 1] = v;
+      pixels[i * 4 + 2] = v;
+      pixels[i * 4 + 3] = 255;
+    }
+  } else {
+    throw new Error('不支持的 PGM 格式: ' + magic);
+  }
+
+  offCtx.putImageData(imgData, 0, 0);
+
+  // Update global state
+  mapImage = offscreen;
+  mapWidth = w;
+  mapHeight = h;
+  mapOrigin = { x: 0, y: 0 }; // default; YAML may override
+  mapResolution = 0.05;        // default; YAML may override
+  mapHasYaml = false;
+  mapLoaded = true;
+
+  // Show/hide UI
+  document.getElementById('mapConfig').classList.add('show');
+  document.getElementById('mcRes').value = mapResolution;
+  document.getElementById('mcOx').value = mapOrigin.x;
+  document.getElementById('mcOy').value = mapOrigin.y;
+  document.getElementById('mcSize').textContent = `${w} × ${h} px`;
+
+  updateMapInfo();
+  render();
+  toast(`地图已加载: ${filename || 'PGM'} (${w}×${h})`);
+}
+
+/** Parse a ROS map YAML metadata file and update map config */
+function parseYAML(text) {
+  let resolution = 0.05;
+  let origin = [0, 0, 0];
+
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('#')) continue;
+    const match = trimmed.match(/^(\w+)\s*:\s*(.+)$/);
+    if (!match) continue;
+    const key = match[1].trim();
+    const val = match[2].trim();
+
+    if (key === 'resolution') {
+      resolution = parseFloat(val);
+    } else if (key === 'origin') {
+      // format: [x, y, theta]
+      const arr = val.replace(/[\[\]]/g, '').split(',').map(Number);
+      if (arr.length >= 2) origin = arr;
+    }
+  }
+
+  mapResolution = resolution;
+  mapOrigin = { x: origin[0], y: origin[1] };
+  mapHasYaml = true;
+
+  // Update config panel
+  document.getElementById('mcRes').value = resolution;
+  document.getElementById('mcOx').value = origin[0];
+  document.getElementById('mcOy').value = origin[1];
+  // Hide manual config since we have auto-config
+  document.getElementById('mapConfig').classList.remove('show');
+
+  updateMapInfo();
+  fitView();
+  render();
+  toast(`地图坐标已配置: 分辨率=${resolution}, 原点=(${origin[0]}, ${origin[1]})`);
+}
+
+/** Open PGM file picker (manual map loading) */
+function loadMap() {
+  document.getElementById('pgmInput').click();
+}
+
+/** Handle PGM file from manual picker, then prompt for optional YAML */
+document.getElementById('pgmInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      parsePGM(ev.target.result, file.name);
+      // Store base name hint for YAML matching
+      const yamlBase = file.name.replace(/\.(pgm|png|jpg|jpeg|bmp)$/i, '');
+      document.getElementById('yamlInput').dataset.baseName = yamlBase;
+      toast('地图已加载。若需配置文件，点击右侧面板「导入 YAML 配置」');
+    } catch (err) {
+      toast('PGM 解析失败: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value = '';
+});
+
+/** Handle YAML file from manual picker */
+document.getElementById('yamlInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  // Verify it matches the PGM base name if we have one
+  const expectedBase = this.dataset.baseName || '';
+  if (expectedBase) {
+    const fileBase = file.name.replace(/\.(yaml|yml)$/i, '');
+    if (fileBase !== expectedBase) {
+      toast(`警告: YAML 文件名 "${file.name}" 与 PGM 不匹配，但仍会尝试加载`);
+    }
+  }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      parseYAML(ev.target.result);
+    } catch (err) {
+      toast('YAML 解析失败: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+/** Apply manual map configuration from the sidebar panel */
+function applyMapConfig() {
+  if (!mapLoaded) return;
+  const res = parseFloat(document.getElementById('mcRes').value);
+  const ox = parseFloat(document.getElementById('mcOx').value);
+  const oy = parseFloat(document.getElementById('mcOy').value);
+  if (!isNaN(res) && res > 0 && !isNaN(ox) && !isNaN(oy)) {
+    mapResolution = res;
+    mapOrigin = { x: ox, y: oy };
+    mapHasYaml = true; // treat manual config as "has config"
+    document.getElementById('mapConfig').classList.remove('show');
+    updateMapInfo();
+    fitView();
+    render();
+    toast('地图配置已应用');
+  } else {
+    toast('请输入有效的数值');
+  }
+}
+
+/** Clear the loaded map */
+function clearMap() {
+  mapImage = null;
+  mapLoaded = false;
+  mapHasYaml = false;
+  mapWidth = 0;
+  mapHeight = 0;
+  document.getElementById('mapConfig').classList.remove('show');
+  document.getElementById('mapInfo').style.display = 'none';
+  document.getElementById('clearMapBtn').style.display = 'none';
+  render();
+  // Re-fit to points if any
+  if (points.length > 0) fitView();
+  toast('地图已移除');
+}
+
+/** Update map info in toolbar */
+function updateMapInfo() {
+  const el = document.getElementById('mapInfo');
+  const clearBtn = document.getElementById('clearMapBtn');
+  if (mapLoaded) {
+    const res = mapResolution;
+    const ox = mapOrigin.x.toFixed(2);
+    const oy = mapOrigin.y.toFixed(2);
+    el.textContent = `🗺 ${mapWidth}×${mapHeight}  ${res} m/px  原点(${ox}, ${oy})`;
+    el.style.display = 'inline';
+    clearBtn.style.display = 'inline';
+  } else {
+    el.style.display = 'none';
+    clearBtn.style.display = 'none';
+  }
+}
+
+// ============================================================
+//  Keyboard shortcuts
+// ============================================================
+document.addEventListener('keydown', e => {
+  // Ctrl+Z undo (works even in inputs)
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    e.preventDefault();
+    undo();
+    return;
+  }
+  // Ctrl+S save (works even in inputs)
+  if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+    e.preventDefault();
+    exportCSV();
+    return;
+  }
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (selectedIdx >= 0) deletePoint(selectedIdx);
+  }
+  if (e.key === 'n' || e.key === 'N') addPoint();
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+    e.preventDefault();
+    fitMapView();
+    toast('全局视图（全地图）');
+    return;
+  }
+  if (e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+    fitMapView();
+    toast('全局视图（全地图）');
+    return;
+  }
+  if (e.key === 'f' || e.key === 'F') {
+    fitView();
+    toast('已适配视图');
+  }
+});
+
+// ============================================================
+//  Init
+// ============================================================
+resize();
+updatePointList();
+updatePropPanel();
+toast('点击「导入」加载 CSV 文件');
+</script>
+</body>
+</html>

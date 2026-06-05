@@ -8,7 +8,7 @@ command: csv
 
 管理 davinci-mini 小车上的航点文件和地图文件：
 
-- **download**: 将开发板上的 `out_test.csv` + 地图 (PGM + YAML) 拷贝到 Windows 桌面 `保存的点位/时间戳/` 目录下
+- **download**: 将开发板上的 `out_test.csv` + 地图 (PGM + YAML) 拷贝到本机 `./点位管理器/时间戳/` 目录下
 - **upload**: 将本机指定位置的 CSV 文件上传到开发板，替换 `out_test.csv`
 
 ## 固定参数
@@ -21,7 +21,7 @@ command: csv
 | 板上的航点文件 | `/home/davinci-mini/racecar/src/racecar/scripts/out_test.csv` |
 | 板上的地图文件 | `/home/davinci-mini/racecar/src/racecar/map/ai_map.pgm` |
 | 板上的地图元数据 | `/home/davinci-mini/racecar/src/racecar/map/ai_map.yaml` |
-| 本地备份目录 | `C:\Users\LX\Desktop\保存的点位\` |
+| 本地备份目录 | `./点位管理器/`（相对于当前工作目录） |
 
 ## 执行步骤
 
@@ -30,7 +30,7 @@ command: csv
 检查桌面备份目录是否存在，不存在则创建：
 
 ```bash
-mkdir -p "/c/Users/LX/Desktop/保存的点位"
+mkdir -p "./点位管理器"
 ```
 
 检查 SSH 连接：
@@ -61,13 +61,13 @@ ssh davinci-mini@192.168.5.100 "test -f /home/davinci-mini/racecar/src/racecar/m
 创建目录：
 
 ```bash
-mkdir -p "/c/Users/LX/Desktop/保存的点位/MMDD-HHMMSS"
+mkdir -p "./点位管理器/MMDD-HHMMSS"
 ```
 
 **1.3 下载 CSV 文件：**
 
 ```bash
-scp davinci-mini@192.168.5.100:/home/davinci-mini/racecar/src/racecar/scripts/out_test.csv "/c/Users/LX/Desktop/保存的点位/MMDD-HHMMSS/out_test.csv"
+scp davinci-mini@192.168.5.100:/home/davinci-mini/racecar/src/racecar/scripts/out_test.csv "./点位管理器/MMDD-HHMMSS/out_test.csv"
 ```
 
 **1.4 下载地图文件（如存在）：**
@@ -75,8 +75,8 @@ scp davinci-mini@192.168.5.100:/home/davinci-mini/racecar/src/racecar/scripts/ou
 如果地图 PGM 文件存在，下载 PGM 和 YAML，保持原始文件名：
 
 ```bash
-scp davinci-mini@192.168.5.100:/home/davinci-mini/racecar/src/racecar/map/ai_map.pgm "/c/Users/LX/Desktop/保存的点位/MMDD-HHMMSS/ai_map.pgm"
-scp davinci-mini@192.168.5.100:/home/davinci-mini/racecar/src/racecar/map/ai_map.yaml "/c/Users/LX/Desktop/保存的点位/MMDD-HHMMSS/ai_map.yaml"
+scp davinci-mini@192.168.5.100:/home/davinci-mini/racecar/src/racecar/map/ai_map.pgm "./点位管理器/MMDD-HHMMSS/ai_map.pgm"
+scp davinci-mini@192.168.5.100:/home/davinci-mini/racecar/src/racecar/map/ai_map.yaml "./点位管理器/MMDD-HHMMSS/ai_map.yaml"
 ```
 
 **1.5 向用户报告：**
@@ -84,7 +84,7 @@ scp davinci-mini@192.168.5.100:/home/davinci-mini/racecar/src/racecar/map/ai_map
 ```
 下载完成 ✅
 
-  目录:  C:\Users\LX\Desktop\保存的点位\MMDD-HHMMSS\
+  目录:  ./点位管理器/MMDD-HHMMSS/
   ├── out_test.csv    (N 个航点)
   ├── ai_map.pgm      (WxH 像素)
   └── ai_map.yaml     (分辨率 X m/像素)
@@ -141,7 +141,7 @@ ssh davinci-mini@192.168.5.100 "head -3 /home/davinci-mini/racecar/src/racecar/s
 
 ## 注意事项
 
-- 下载时目录 `桌面/保存的点位/` 会自动创建，每次下载都新建一个时间戳子目录
+- 下载时目录 `./点位管理器/` 会自动创建，每次下载都新建一个时间戳子目录
 - 上传会**覆盖**板上的 `out_test.csv`，原文件不会被备份（如有需要先 download）
 - 只校验 CSV 格式是否为 4 列浮点数，不校验坐标值是否在地图范围内
 - 上传后小车正在运行的导航不受影响，下次启动 `go.py` 时使用新航点
