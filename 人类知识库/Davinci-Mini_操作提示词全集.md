@@ -3,6 +3,55 @@
 > 整理自本地知识库 (`C:\Users\LX\Desktop\文档 - 机器人比赛\`) + 操作截图
 > 最后更新：2026-06-05
 
+
+##启动
+bash ~/racecar/car.sh
+或
+cd racecar
+bash car.sh
+
+## 键盘控制
+新建终端并输入
+ros2 run racecar racecar_teleop.py    # 键盘控制小车
+## 地图构建
+一终端：
+cd racecar
+bash gmapping.sh
+二终端：
+ros2 run racecar racecar_teleop.py
+键盘控制关闭：
+cd racecar
+bash save.sh
+
+## 单点导航（校准地图，一般不用）
+cd racecar
+bash nav_one.sh
+
+## 多点导航
+一终端：
+cd racecar
+bash nav.sh
+或
+bash ~/racecar/car.sh
+二终端：
+ros2 run racecar get.py   #（先不运行）膨胀后运行
+标点，标点后 f 保存
+文件可在路径/racecar/src/racerar/script/查看
+        Ctrl+c
+        pkill-9-f”ros-args”
+关闭所有终端
+
+##运行多点导航
+ros2 run racecar go.py（先不运行）膨胀后运行
+
+Claude提示词以及skill
+claude
+/connect-davinci     (连接小车）
+扫描当前目录下git仓库，提交git仓库  /racecar-git
+封装成skill
+/csv-manager 下载（将改完的点下载到桌面文件夹里）
+/csv-manager 上传+桌面文件地址    （将改完的点存到开发板里）
+
 ---
 
 ## 目录
