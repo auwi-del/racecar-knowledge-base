@@ -7,7 +7,7 @@
 
 ## 场景：多点导航
 ```bash
-bash ~/racecar/car.sh       # 运行本命令后，地图即将渲染
+bash ~/racecar/nav.sh       # 运行本命令后，地图即将渲染
 ```
 
 ```bash
