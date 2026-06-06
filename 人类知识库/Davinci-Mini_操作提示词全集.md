@@ -14,6 +14,8 @@ bash ~/racecar/nav.sh       # 运行本命令后，地图即将渲染
 ros2 run racecar go.py      # 等待 cost map 渲染完成后，运行此命令
 ```
 ---
+bash ~/racecar/nav.sh + ros2 run racecar go.py
+---
 
 ## 场景: 地图构建
 ### 1. 开启建图节点

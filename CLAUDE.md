@@ -13,6 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 严禁直接从知识库中调用知识而不告知用户
 
+当你进行联网搜索时，一定明确，搜索 ROS2 相关内容
 
 ## 项目概述
 
