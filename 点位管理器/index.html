@@ -116,6 +116,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   <button onclick="exportCSV()">💾 保存</button>
   <button onclick="addPoint()">＋ 新增</button>
   <button onclick="insertPoint()">⤵ 插入</button>
+  <button onclick="orientToNext()">→ 指向下一</button>
   <button type="button" onclick="toggleSettings()">⚙ 设置</button>
   <div class="spacer"></div>
   <span class="info" id="mapInfo" style="display:none"></span>
@@ -729,6 +730,24 @@ function insertPoint() {
   updatePointCount();
   render();
   toast(`已在 #${insertIdx} 处插入新点`);
+}
+
+/** 将所有点位朝向指向下一个点（最后一个点指向第一个点，形成闭环） */
+function orientToNext() {
+  if (points.length < 2) { toast('至少需要 2 个点才能指向'); return; }
+  pushUndo();
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length; /* 下一个点，末尾循环到第一个 */
+    const dx = points[j].x - points[i].x;
+    const dy = points[j].y - points[i].y;
+    const yaw = Math.atan2(-dy, dx); // 画布 Y 轴向下，取反补偿
+    points[i].z = Math.sin(yaw / 2);
+    points[i].w = Math.cos(yaw / 2);
+  }
+  updatePropPanel();
+  updatePointList();
+  render();
+  toast('所有点位已指向下一个点（闭环）');
 }
 
 function deletePoint(idx) {
