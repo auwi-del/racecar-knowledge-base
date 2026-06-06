@@ -115,6 +115,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   <button onclick="undo()">↩ 撤销</button>
   <button onclick="exportCSV()">💾 保存</button>
   <button onclick="addPoint()">＋ 新增</button>
+  <button onclick="insertPoint()">⤵ 插入</button>
   <button type="button" onclick="toggleSettings()">⚙ 设置</button>
   <div class="spacer"></div>
   <span class="info" id="mapInfo" style="display:none"></span>
@@ -173,6 +174,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
       <input type="range" id="pointSizeSlider" min="0.5" max="2.0" step="0.1" value="1.0"
              oninput="onPointSizeChange(this.value)">
       <span id="pointSizeLabel" style="font-size:12px;color:#aaa;min-width:28px;text-align:center">1.0</span>
+    </div>
+  </div>
+  <div class="setting-row">
+    <label for="bezierToggle">贝塞尔曲线</label>
+    <label class="toggle" for="bezierToggle">
+      <input type="checkbox" id="bezierToggle" onchange="onBezierToggle(this.checked)">
+      <div class="slider"></div>
+    </label>
+  </div>
+  <div class="setting-row" id="bezierTensionRow" style="opacity:0.4">
+    <label for="bezierTensionSlider">曲线张力</label>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <input type="range" id="bezierTensionSlider" min="0.0" max="5.0" step="0.05" value="0.5"
+             oninput="onBezierTensionChange(this.value)">
+      <span id="bezierTensionLabel" style="font-size:12px;color:#aaa;min-width:28px;text-align:center">0.5</span>
     </div>
   </div>
   <button class="settings-close" onclick="toggleSettings()">关闭</button>
@@ -372,17 +388,21 @@ function render() {
   }
 
   // draw connections (path)
-  ctx.strokeStyle = '#0f346088';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([4, 6]);
-  ctx.beginPath();
-  for (let i = 0; i < points.length; i++) {
-    const s = worldToScreen(points[i].x, points[i].y);
-    if (i === 0) ctx.moveTo(s.x, s.y);
-    else ctx.lineTo(s.x, s.y);
+  if (settings.useBezier) {
+    drawBezierPath();
+  } else {
+    ctx.strokeStyle = '#0f346088';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    for (let i = 0; i < points.length; i++) {
+      const s = worldToScreen(points[i].x, points[i].y);
+      if (i === 0) ctx.moveTo(s.x, s.y);
+      else ctx.lineTo(s.x, s.y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
-  ctx.stroke();
-  ctx.setLineDash([]);
 
   // draw points
   for (let i = 0; i < points.length; i++) {
@@ -682,6 +702,33 @@ function addPoint() {
   updatePointList();
   updatePointCount();
   fitView();
+}
+
+/** 在选中点后面插入一个新点，沿朝向偏移 1m，不重合 */
+function insertPoint() {
+  if (selectedIdx < 0 || selectedIdx >= points.length) {
+    toast('请先选中一个点位');
+    return;
+  }
+  pushUndo();
+  const src = points[selectedIdx];
+  const yaw = 2 * Math.atan2(src.z, src.w);
+  const DIST = 1.0; // 偏移 1 米
+  const newPoint = {
+    x: src.x + Math.cos(yaw) * DIST,
+    y: src.y + Math.sin(yaw) * DIST,
+    z: 0,
+    w: 1,
+    stopTime: 0
+  };
+  const insertIdx = selectedIdx + 1;
+  points.splice(insertIdx, 0, newPoint);
+  selectedIdx = insertIdx;
+  updatePropPanel();
+  updatePointList();
+  updatePointCount();
+  render();
+  toast(`已在 #${insertIdx} 处插入新点`);
 }
 
 function deletePoint(idx) {
@@ -1116,7 +1163,9 @@ const SETTINGS_KEY = 'waypoint_editor_settings';
 
 let settings = {
   showGrid: true,
-  pointSize: 1.0
+  pointSize: 1.0,
+  useBezier: false,
+  bezierTension: 0.5
 };
 
 function loadSettings() {
@@ -1137,6 +1186,13 @@ function loadSettings() {
     psSlider.value = settings.pointSize;
     document.getElementById('pointSizeLabel').textContent = settings.pointSize.toFixed(1);
   }
+  document.getElementById('bezierToggle').checked = settings.useBezier;
+  const btSlider = document.getElementById('bezierTensionSlider');
+  if (btSlider) {
+    btSlider.value = settings.bezierTension;
+    document.getElementById('bezierTensionLabel').textContent = settings.bezierTension.toFixed(2);
+  }
+  syncBezierUI();
 }
 
 function saveSettings() {
@@ -1169,6 +1225,70 @@ function onPointSizeChange(val) {
   saveSettings();
   render();
   document.getElementById('pointSizeLabel').textContent = v.toFixed(1);
+}
+
+function syncBezierUI() {
+  const row = document.getElementById('bezierTensionRow');
+  row.style.opacity = settings.useBezier ? '1' : '0.4';
+  const slider = document.getElementById('bezierTensionSlider');
+  slider.disabled = !settings.useBezier;
+}
+
+function onBezierToggle(checked) {
+  settings.useBezier = checked;
+  saveSettings();
+  syncBezierUI();
+  render();
+  toast(checked ? '贝塞尔曲线已开启' : '贝塞尔曲线已关闭');
+  toggleSettings();
+}
+
+function onBezierTensionChange(val) {
+  const v = parseFloat(val);
+  settings.bezierTension = v;
+  saveSettings();
+  render();
+  document.getElementById('bezierTensionLabel').textContent = v.toFixed(2);
+}
+
+/** 绘制 Catmull-Rom 贝塞尔曲线路径 */
+function drawBezierPath() {
+  if (points.length < 2) return;
+  const tension = settings.bezierTension;
+  ctx.strokeStyle = '#0f346088';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 6]);
+  ctx.beginPath();
+
+  const s0 = worldToScreen(points[0].x, points[0].y);
+  ctx.moveTo(s0.x, s0.y);
+
+  for (let i = 1; i < points.length; i++) {
+    // 四个邻域点用于 Catmull-Rom → Bezier 控制点
+    const pPrev = i >= 2 ? points[i - 2] : points[0];
+    const pStart = points[i - 1];
+    const pEnd = points[i];
+    const pNext = i < points.length - 1 ? points[i + 1] : points[i];
+
+    const sPrev = worldToScreen(pPrev.x, pPrev.y);
+    const sStart = worldToScreen(pStart.x, pStart.y);
+    const sEnd = worldToScreen(pEnd.x, pEnd.y);
+    const sNext = worldToScreen(pNext.x, pNext.y);
+
+    const cp1 = {
+      x: sStart.x + (sEnd.x - sPrev.x) / 6 * tension,
+      y: sStart.y + (sEnd.y - sPrev.y) / 6 * tension
+    };
+    const cp2 = {
+      x: sEnd.x - (sNext.x - sStart.x) / 6 * tension,
+      y: sEnd.y - (sNext.y - sStart.y) / 6 * tension
+    };
+
+    ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, sEnd.x, sEnd.y);
+  }
+
+  ctx.stroke();
+  ctx.setLineDash([]);
 }
 
 // ============================================================
@@ -1562,6 +1682,7 @@ document.addEventListener('keydown', e => {
     if (selectedIdx >= 0) deletePoint(selectedIdx);
   }
   if (e.key === 'n' || e.key === 'N') addPoint();
+  if (e.key === 'i' || e.key === 'I') insertPoint();
   if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
     e.preventDefault();
     fitMapView();
