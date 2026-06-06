@@ -4,55 +4,53 @@
 > 最后更新：2026-06-05
 
 
-## 启动
-bash ~/racecar/car.sh
-或
-cd racecar
-bash car.sh
 
-## 键盘控制
-新建终端并输入
-ros2 run racecar racecar_teleop.py    # 键盘控制小车
-## 地图构建
+## 场景：多点导航
+```bash
+bash ~/racecar/car.sh       # 运行本命令后，地图即将渲染
+```
+
+```bash
+ros2 run racecar go.py      # 等待 cost map 渲染完成后，运行此命令
+```
+---
+
+## 场景: 地图构建
+### 1. 开启建图节点
 一终端：
-cd racecar
-bash gmapping.sh
+```bash
+bash ~/racecar/gmapping.sh
+```
+
 二终端：
-ros2 run racecar racecar_teleop.py
+```bash
+ros2 run racecar racecar_teleop.py      # 使用键盘遥控小车
+```
 键盘控制关闭：
-cd racecar
-bash save.sh
+
+```bash
+bash ~/racecar/save.sh
+```
+---
+
+### 键盘遥控(建图用)
+新建终端并输入
+```bash
+ros2 run racecar racecar_teleop.py    # 键盘控制小车
+```
 
 ## 单点导航（校准地图，一般不用）
-cd racecar
-bash nav_one.sh
 
-## 多点导航
-一终端：
-cd racecar
-bash nav.sh
-或
-bash ~/racecar/car.sh
-二终端：
-ros2 run racecar get.py   #（先不运行）膨胀后运行
-标点，标点后 f 保存
-文件可在路径/racecar/src/racerar/script/查看
-        Ctrl+c
-        pkill-9-f”ros-args”
-关闭所有终端
-
-## 运行多点导航
-ros2 run racecar go.py（先不运行）膨胀后运行
-
-Claude提示词以及skill
-claude
-/connect-davinci     (连接小车）
-扫描当前目录下git仓库，提交git仓库  /racecar-git
-封装成skill
-/csv-manager 下载（将改完的点下载到桌面文件夹里）
-/csv-manager 上传+桌面文件地址    （将改完的点存到开发板里）
-
+```bash
+bash ~/racecar/nav_one.sh
+```
 ---
+## 启动
+
+```bash
+bash ~/racecar/car.sh
+```
+
 
 ## 目录
 

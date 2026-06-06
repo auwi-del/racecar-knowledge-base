@@ -240,7 +240,7 @@ function worldToScreen(wx, wy) {
   const cy = canvas.height / 2;
   return {
     x: (wx - view.cx) * view.scale + cx,
-    y: (wy - view.cy) * view.scale + cy
+    y: -(wy - view.cy) * view.scale + cy
   };
 }
 function screenToWorld(sx, sy) {
@@ -248,7 +248,7 @@ function screenToWorld(sx, sy) {
   const cy = canvas.height / 2;
   return {
     x: (sx - cx) / view.scale + view.cx,
-    y: (sy - cy) / view.scale + view.cy
+    y: -(sy - cy) / view.scale + view.cy
   };
 }
 function dist(a, b) {
@@ -545,7 +545,7 @@ window.addEventListener('mousemove', e => {
     const dy = pos.y - drag.startY;
     if (drag.mode === 'pan') {
       view.cx = drag.viewStart.cx - dx / view.scale;
-      view.cy = drag.viewStart.cy - dy / view.scale;
+      view.cy = drag.viewStart.cy + dy / view.scale;
       render();
     } else if (drag.mode === 'point') {
       const w = screenToWorld(pos.x, pos.y);
@@ -640,7 +640,7 @@ canvas.addEventListener('touchmove', e => {
   } else if (drag.mode === 'pan' && e.touches.length === 1) {
     const pos = getPos(e);
     view.cx = drag.viewStart.cx - (pos.x - drag.startX) / view.scale;
-    view.cy = drag.viewStart.cy - (pos.y - drag.startY) / view.scale;
+    view.cy = drag.viewStart.cy + (pos.y - drag.startY) / view.scale;
     render();
   } else if (drag.mode === 'pinch' && e.touches.length >= 2) {
     const t = e.touches;
@@ -1306,15 +1306,15 @@ function drawMap() {
   // PGM pixel (col, row) → world → screen
   // ROS convention: origin = center of bottom-left pixel
   // world_x = origin_x + (col + 0.5) * resolution
-  // world_y = origin_y + (height - 1 - row + 0.5) * resolution
+  // world_y = origin_y + (height - 1 - row + 0.5) * resolution（row=0 顶部对应 Y_max）
   // screen_x = (world_x - view.cx) * view.scale + W/2
   //         = col * res * view.scale + (ox + 0.5*res - view.cx) * view.scale + W/2
-  // screen_y = (world_y - view.cy) * view.scale + H/2
-  //         = row * (-res * view.scale) + (oy + (h-0.5)*res - view.cy) * view.scale + H/2
+  // screen_y = -(world_y - view.cy) * view.scale + H/2  （Y 向上：ROS Y↑ → screen ↓）
+  //         = row * res * view.scale + (-(oy + (h-0.5)*res - view.cy)) * view.scale + H/2
   const a = view.scale * res;
-  const d = -view.scale * res;
+  const d = view.scale * res;         // 正 d：不翻转 Y 轴，图片正常显示
   const e = (ox + 0.5 * res - view.cx) * view.scale + W / 2;
-  const f = (oy + (h - 0.5) * res - view.cy) * view.scale + H / 2;
+  const f = (-(oy + (h - 0.5) * res - view.cy)) * view.scale + H / 2;
 
   ctx.setTransform(a, 0, 0, d, e, f);
   ctx.drawImage(mapImage, 0, 0);
