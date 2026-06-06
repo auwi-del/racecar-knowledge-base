@@ -4,30 +4,14 @@
 > 最后更新：2026-06-05
 
 
-## 启动
 
+## 场景：多点导航
 ```bash
-bash ~/racecar/car.sh
+bash ~/racecar/car.sh       # 运行本命令后，地图即将渲染
 ```
 
-
-## 多点导航
-一终端：
-cd racecar
-bash nav.sh
-或
-bash ~/racecar/car.sh
-二终端：
-ros2 run racecar get.py   #（先不运行）膨胀后运行
-标点，标点后 f 保存
-文件可在路径/racecar/src/racerar/script/查看
-        Ctrl+c
-        pkill-9-f”ros-args”
-关闭所有终端
-
-## 运行多点导航
 ```bash
-ros2 run racecar go.py #（先不运行）膨胀后运行
+ros2 run racecar go.py      # 等待 cost map 渲染完成后，运行此命令
 ```
 ---
 
@@ -61,6 +45,12 @@ ros2 run racecar racecar_teleop.py    # 键盘控制小车
 bash ~/racecar/nav_one.sh
 ```
 ---
+## 启动
+
+```bash
+bash ~/racecar/car.sh
+```
+
 
 ## 目录
 
