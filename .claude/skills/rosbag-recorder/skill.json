@@ -1,0 +1,28 @@
+{
+  "name": "rosbag-recorder",
+  "description": "在 davinci-mini 开发板上部署和运行 rosbag 录制器。将 /plan、/goal_pose、/scan 等话题录制为 rosbag，与 plan_listener 互补并存，同一目录下同时产出 CSV + rosbag",
+  "command": "rosbag-recorder",
+  "parameters": [
+    {
+      "name": "action",
+      "description": "操作类型: deploy (注入并编译), run (启动录制), stop (停止录制), download (下载 rosbag 到本地)",
+      "required": false,
+      "default": "deploy"
+    },
+    {
+      "name": "dir",
+      "description": "自定义本次录制目录名（默认: 录制-MMDD_HHMMSS）",
+      "required": false
+    },
+    {
+      "name": "topics",
+      "description": "录制的话题，逗号分隔（默认: /plan,/goal_pose,/odom_combined,/scan,/car_cmd_vel,/tf,/tf_static）",
+      "required": false
+    },
+    {
+      "name": "duration",
+      "description": "最长录制时长（秒），超时自动停止",
+      "required": false
+    }
+  ]
+}

@@ -3,6 +3,8 @@
 > 整理自本地知识库 (`C:\Users\LX\Desktop\文档 - 机器人比赛\`) + 操作截图
 > 最后更新：2026-06-07
 
+source ~/racecar/install/setup.bash && python3 ~/racecar/src/racecar/scripts/rosbag_recorder.py 
+
 ## 场景：多点导航
 
 ```bash

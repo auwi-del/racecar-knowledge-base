@@ -1,0 +1,28 @@
+{
+  "name": "path-analysis-assistant",
+  "description": "Parse ROS2 rosbags with Python rosbags library: extract /plan, /odom_combined, /cmd_vel — analyze path quality, trajectory tracking error, velocity response — suggest nav.yaml tuning",
+  "command": "path-analysis",
+  "parameters": [
+    {
+      "name": "bag",
+      "description": "Rosbag 目录路径（如 bags/nav_test_0/），不提供则自动搜索开发板最新 bag",
+      "required": false
+    },
+    {
+      "name": "csv",
+      "description": "CSV 文件路径（备选模式），如 path_records/plan_0001_*.csv",
+      "required": false
+    },
+    {
+      "name": "mode",
+      "description": "分析模式：full（完整报告，默认）、quick（快速摘要）、path（仅路径质量）、tracking（仅跟踪误差）、velocity（仅速度响应）、compare（多文件对比）",
+      "required": false,
+      "default": "full"
+    },
+    {
+      "name": "topics",
+      "description": "Bag 中要分析的话题列表（逗号分隔），默认自动检测可用话题",
+      "required": false
+    }
+  ]
+}

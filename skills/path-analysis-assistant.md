@@ -1,9 +1,9 @@
 ---
-name: 路径分析助手
-description: 读取 plan_listener.py 生成的 CSV 路径文件，分析路径质量、诊断导航问题、给出调参建议
+name: path-analysis-assistant
+description: Read plan_listener.py CSV path files, analyze path quality (smoothness/safety/efficiency/curvature), diagnose navigation issues, suggest nav.yaml tuning parameters
 ---
 
-# 🗺️ 路径分析助手 — Skill
+# 🗺️ Path Analysis Assistant — Skill
 
 > **适用场景**：通过 `plan_listener.py` 录制了 `/plan` 路径 CSV 后，让 AI 读取并分析路径质量、诊断导航问题。
 
@@ -466,6 +466,6 @@ def suggest_tuning(results):
 | `~/racecar/src/racecar/scripts/out_test.csv` | 预制航点 CSV（go.py 读取的输入文件） |
 | `~/racecar/src/racecar/maps/ai_map.yaml` | 地图元数据（路径坐标系的基准） |
 
-> 本技能文件位置：`<项目根>/skills/路径分析助手.md`
+> 本技能文件位置：`<项目根>/skills/path-analysis-assistant.md`
 > 对应的数据采集工具：`<项目根>/scripts/plan_listener.py`
 > 部署与验证流程：`<项目根>/SOP-plan_listener注入与验证.md`
