@@ -1,40 +1,51 @@
 # Davinci-Mini ROS2 小车 — 操作提示词全集
 
 > 整理自本地知识库 (`C:\Users\LX\Desktop\文档 - 机器人比赛\`) + 操作截图
-> 最后更新：2026-06-05
-
-
+> 最后更新：2026-06-07
 
 ## 场景：多点导航
+
 ```bash
 bash ~/racecar/nav.sh       # 运行本命令后，地图即将渲染
 ```
 
 ```bash
-ros2 run racecar go.py      # 等待 cost map 渲染完成后，运行此命令
+b
 ```
+
 ---
 
+bash ~/racecar/nav.sh + ros2 run racecar go.py
+----------------------------------------------
+
 ## 场景: 地图构建
+
 ### 1. 开启建图节点
+
 一终端：
+
 ```bash
 bash ~/racecar/gmapping.sh
 ```
 
 二终端：
+
 ```bash
 ros2 run racecar racecar_teleop.py      # 使用键盘遥控小车
 ```
+
 键盘控制关闭：
 
 ```bash
 bash ~/racecar/save.sh
 ```
+
 ---
 
 ### 键盘遥控(建图用)
+
 新建终端并输入
+
 ```bash
 ros2 run racecar racecar_teleop.py    # 键盘控制小车
 ```
@@ -44,13 +55,14 @@ ros2 run racecar racecar_teleop.py    # 键盘控制小车
 ```bash
 bash ~/racecar/nav_one.sh
 ```
+
 ---
+
 ## 启动
 
 ```bash
 bash ~/racecar/car.sh
 ```
-
 
 ## 目录
 
@@ -65,6 +77,7 @@ bash ~/racecar/car.sh
 9. [地图文件管理](#9-地图文件管理)
 10. [Claude 技能速查表](#10-claude-技能速查表)
 11. [调试命令速查](#11-调试命令速查)
+12. [路径录制（plan_listener）](#12-路径录制plan_listener--监听-plan-话题并保存为-csv)
 
 ---
 
@@ -72,12 +85,12 @@ bash ~/racecar/car.sh
 
 ### 硬件连接
 
-| 项目 | 说明 |
-|------|------|
-| 开发板 IP | `192.168.5.100` |
+| 项目        | 说明                                  |
+| ----------- | ------------------------------------- |
+| 开发板 IP   | `192.168.5.100`                     |
 | 本机推荐 IP | `192.168.5.2`（以太网网卡手动设置） |
-| 连接方式 | 以太网直连或同一交换机 |
-| SSH 认证 | 密钥认证（免密） |
+| 连接方式    | 以太网直连或同一交换机                |
+| SSH 认证    | 密钥认证（免密）                      |
 
 ### 检查网络连通性
 
@@ -117,6 +130,7 @@ bash ~/racecar/nav.sh
 ```
 
 启动流程：
+
 1. `Run_car.launch.py` — 底盘 + 传感器
 2. 等待 10 秒
 3. `Run_nav.launch.py` — Nav2 全套（AMCL + planner + controller + waypoint_cycle）
@@ -163,6 +177,7 @@ ros2 run racecar racecar_teleop
 ```
 
 操作步骤：
+
 1. 遥控机器人缓慢走遍整个区域
 2. 确保回环闭合（走一圈回到起点附近区域）
 3. RViz 会自动打开，添加 `/map` 话题查看建图进度
@@ -174,10 +189,12 @@ bash ~/racecar/save.sh
 ```
 
 保存位置：`~/racecar/src/racecar/map/`，生成：
+
 - `ai_map.yaml` — 地图元数据
 - `ai_map.pgm` — 灰度图像
 
 手动保存可指定路径：
+
 ```bash
 ros2 run nav2_map_server map_saver_cli -f ~/racecar/src/racecar/map/my_map
 ```
@@ -197,11 +214,11 @@ bash ~/racecar/nav.sh
 
 ### 导航操作方法
 
-| 方法 | 操作 | 说明 |
-|------|------|------|
-| RViz 2D Nav Goal | 点击按钮 → 点击地图目标点 | 单点导航 |
-| Publish Point | 点击按钮 → 点击多个航点 | 航点循环（自动逐个执行） |
-| 命令行 | `ros2 topic pub /goal_pose ...` | 编程控制 |
+| 方法             | 操作                              | 说明                     |
+| ---------------- | --------------------------------- | ------------------------ |
+| RViz 2D Nav Goal | 点击按钮 → 点击地图目标点        | 单点导航                 |
+| Publish Point    | 点击按钮 → 点击多个航点          | 航点循环（自动逐个执行） |
+| 命令行           | `ros2 topic pub /goal_pose ...` | 编程控制                 |
 
 ### 单点导航（校准地图用，一般不常用）
 
@@ -216,6 +233,7 @@ bash ~/racecar/nav_one.sh
 ### 方案一：RViz 手动点选（waypoint_cycle）
 
 在 `nav.sh` 启动后：
+
 1. 在 RViz 中点击 **Publish Point** 按钮
 2. 在地图上依次点击多个航点（显示带编号的箭头）
 3. 自动逐个执行，完成后从头循环
@@ -251,10 +269,10 @@ ros2 run racecar go
 
 ### 两个 CSV 文件说明
 
-| 文件 | 路径 | 用途 |
-|------|------|------|
-| 主文件 | `~/racecar/src/racecar/scripts/out_test.csv` | `get.py` 默认保存，`go.py` 默认读取 |
-| 备份 | `~/racecar/src/racecar/scripts/out_test/out_test.csv` | 备份/历史航点 |
+| 文件   | 路径                                                    | 用途                                    |
+| ------ | ------------------------------------------------------- | --------------------------------------- |
+| 主文件 | `~/racecar/src/racecar/scripts/out_test.csv`          | `get.py` 默认保存，`go.py` 默认读取 |
+| 备份   | `~/racecar/src/racecar/scripts/out_test/out_test.csv` | 备份/历史航点                           |
 
 CSV 格式：`x, y, orientation_z, orientation_w[, stop_time]`
 
@@ -267,12 +285,12 @@ CSV 格式：`x, y, orientation_z, orientation_w[, stop_time]`
 
 ### 最核心要改的 4 个参数
 
-| # | 行号 | 参数 | 旧值 → 新值 | 作用 |
-|---|------|------|-------------|------|
-| 1 | 121 | `use_collision_detection` | `false → true` | 开启碰撞检测 |
-| 2 | 123 | `max_allowed_time_to_collision_up_to_carrot` | `1.0 → 2.0` | 留足反应时间 |
-| 3 | 167 | 局部 `inflation_radius` | `0.25 → 0.5` | 局部膨胀半径 |
-| 4 | 230 | 全局 `inflation_radius` | `0.15 → 0.4` | 全局膨胀半径 |
+| # | 行号 | 参数                                           | 旧值 → 新值      | 作用         |
+| - | ---- | ---------------------------------------------- | ----------------- | ------------ |
+| 1 | 121  | `use_collision_detection`                    | `false → true` | 开启碰撞检测 |
+| 2 | 123  | `max_allowed_time_to_collision_up_to_carrot` | `1.0 → 2.0`    | 留足反应时间 |
+| 3 | 167  | 局部 `inflation_radius`                      | `0.25 → 0.5`   | 局部膨胀半径 |
+| 4 | 230  | 全局 `inflation_radius`                      | `0.15 → 0.4`   | 全局膨胀半径 |
 
 ### 完整调整方案（8 个参数）
 
@@ -348,16 +366,16 @@ planner_server.GridBased.cost_travel_multiplier: 2.0 → 3.0
 
 ### 参数速查表
 
-| 想解决什么 | 改哪里 | 参数 | 方向 |
-|-----------|--------|------|------|
-| 左右晃动 | controller_server | lookahead_dist | 增大 |
-| 撞墙 | controller_server | use_collision_detection | true |
-| 撞墙 | local_costmap | inflation_radius | 增大 |
-| 撞墙 | global_costmap | inflation_radius | 增大 |
-| 犹豫/走走停停 | controller_server | min_approach_linear_velocity | 减小 |
-| 过弯太冲 | controller_server | desired_linear_vel | 减小 |
-| 路径太贴墙 | planner_server | cost_penalty | 增大 |
-| 路径不平滑 | planner_server.smoother | w_smooth | 增大 |
+| 想解决什么    | 改哪里                  | 参数                         | 方向 |
+| ------------- | ----------------------- | ---------------------------- | ---- |
+| 左右晃动      | controller_server       | lookahead_dist               | 增大 |
+| 撞墙          | controller_server       | use_collision_detection      | true |
+| 撞墙          | local_costmap           | inflation_radius             | 增大 |
+| 撞墙          | global_costmap          | inflation_radius             | 增大 |
+| 犹豫/走走停停 | controller_server       | min_approach_linear_velocity | 减小 |
+| 过弯太冲      | controller_server       | desired_linear_vel           | 减小 |
+| 路径太贴墙    | planner_server          | cost_penalty                 | 增大 |
+| 路径不平滑    | planner_server.smoother | w_smooth                     | 增大 |
 
 ---
 
@@ -400,16 +418,16 @@ x, y, z, w, 3
 
 ### 板上的地图位置
 
-| 文件 | 路径 |
-|------|------|
-| 地图图像 | `~/racecar/src/racecar/map/ai_map.pgm` |
+| 文件       | 路径                                      |
+| ---------- | ----------------------------------------- |
+| 地图图像   | `~/racecar/src/racecar/map/ai_map.pgm`  |
 | 地图元数据 | `~/racecar/src/racecar/map/ai_map.yaml` |
 
 ### 本地桌面已有备份
 
-| 文件 | 路径 |
-|------|------|
-| 地图图像 | `C:\Users\LX\Desktop\保存的点位\0602-170853\ai_map.pgm` |
+| 文件       | 路径                                                       |
+| ---------- | ---------------------------------------------------------- |
+| 地图图像   | `C:\Users\LX\Desktop\保存的点位\0602-170853\ai_map.pgm`  |
 | 地图元数据 | `C:\Users\LX\Desktop\保存的点位\0602-170853\ai_map.yaml` |
 
 ### 当前地图参数
@@ -454,17 +472,17 @@ world_y = origin_y + (height - 1 - row + 0.5) × resolution
 
 ## 10. Claude 技能速查表
 
-| 技能 | 命令 | 用途 |
-|------|------|------|
-| 连接小车 | `/connect-davinci` | SSH 连接开发板并验证 |
-| Git 管理 | `/racecar-git` | 扫描并提交 racecar 仓库 |
-| CSV 管理 | `/csv-manager 下载` | 将航点下载到桌面（按时间戳建目录） |
-| CSV 管理 | `/csv-manager 上传 <文件路径>` | 将本地 CSV 上传到开发板 |
-| 摄像头管理 | `/camera-davinci` | 管理 USB 摄像头 |
-| 录制视频 | `/record-video` | 录制并转 MP4 回传桌面 |
-| 前视距离调参 | `/lookahead-tune` | 查询/修改 lookahead_dist |
-| 自动导航 | `/auto-navigation` | 全自动多点导航 |
-| 导航复盘 | 参阅 `导航复盘方案.md` | rosbag 录制 + Foxglove 分析 |
+| 技能         | 命令                             | 用途                               |
+| ------------ | -------------------------------- | ---------------------------------- |
+| 连接小车     | `/connect-davinci`             | SSH 连接开发板并验证               |
+| Git 管理     | `/racecar-git`                 | 扫描并提交 racecar 仓库            |
+| CSV 管理     | `/csv-manager 下载`            | 将航点下载到桌面（按时间戳建目录） |
+| CSV 管理     | `/csv-manager 上传 <文件路径>` | 将本地 CSV 上传到开发板            |
+| 摄像头管理   | `/camera-davinci`              | 管理 USB 摄像头                    |
+| 录制视频     | `/record-video`                | 录制并转 MP4 回传桌面              |
+| 前视距离调参 | `/lookahead-tune`              | 查询/修改 lookahead_dist           |
+| 自动导航     | `/auto-navigation`             | 全自动多点导航                     |
+| 导航复盘     | 参阅 `导航复盘方案.md`         | rosbag 录制 + Foxglove 分析        |
 
 ---
 
@@ -508,6 +526,76 @@ bash ~/racecar/src/racecar/scripts/record_nav.sh
 
 # 紧急急停
 ssh davinci-mini@192.168.5.100 "bash ~/racecar/src/racecar/scripts/emergency_stop.sh"
+```
+
+---
+
+---
+
+## 12. 路径录制（plan_listener — 监听 /plan 话题并保存为 CSV）
+
+### 用途
+
+监听 Nav2 规划的全局路径（`/plan` 话题），每次导航自动保存为明文 CSV，用于赛后复盘路径质量。
+
+### 启动方式
+
+```bash
+# 前提：nav.sh 已在运行
+# 新开终端执行：
+source ~/racecar/install/setup.bash
+python3 ~/racecar/src/racecar/scripts/plan_listener.py
+```
+
+启动后你会看到：
+```
+🗺️  /plan 监听器已启动
+    💾 保存目录: ~/racecar/path_records/
+```
+
+### 保存的文件
+
+```
+~/racecar/path_records/
+  ├── plan_0001_20260607_143022.csv   ← 第1条路径（Excel可直接打开）
+  ├── plan_0002_20260607_143105.csv   ← 第2条路径
+  └── ...
+```
+
+CSV 包含：路径点坐标 (x, y, 朝向角)、总长、曲折比、弯曲度等元数据。
+
+### 完整 3 终端模式
+
+```bash
+# 终端 1：导航
+bash ~/racecar/nav.sh
+
+# 终端 2：路径监听（录制）
+source ~/racecar/install/setup.bash
+python3 ~/racecar/src/racecar/scripts/plan_listener.py
+
+# 终端 3：发目标（如 CSV 航点导航）
+source ~/racecar/install/setup.bash
+ros2 run racecar go
+```
+
+### 查看已录制的 CSV
+
+```bash
+# 列出所有录制文件
+ls -lh ~/racecar/path_records/
+
+# 查看文件内容
+head -15 ~/racecar/path_records/plan_0001_*.csv
+```
+
+### 导出到本机
+
+```bash
+# 打包
+ssh davinci-mini@192.168.5.100 "cd ~/racecar && tar czf 路径记录.tar.gz path_records/"
+# 拉取
+scp davinci-mini@192.168.5.100:~/racecar/路径记录.tar.gz /c/Users/CX3/Desktop/
 ```
 
 ---
